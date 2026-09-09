@@ -3,8 +3,10 @@ Oura/Whoop and similar. Deferred for v1: self-host github.com/the-momentum/
 open-wearables (docker compose up -d), then set OPEN_WEARABLES_* in .env.
 
 Base URL ``http://localhost:8000/api/v1``; auth header ``X-Open-Wearables-API-Key``.
-Offline mode reuses the synthetic athlete's wellness so the recovery code path is
-exercised without a running instance.
+
+Unconfigured credentials return no rows so Garmin/intervals wellness is left
+alone. Offline mode only synthesizes recovery when OW *is* configured, to
+exercise the merge path without a running instance.
 """
 
 from __future__ import annotations
@@ -19,7 +21,7 @@ from aithlete.connectors import synthetic
 class OpenWearablesClient:
     def __init__(self, config: Config | None = None) -> None:
         self.config = config or get_config()
-        self.offline = self.config.offline or not self.config.open_wearables.configured
+        self.offline = self.config.offline
 
     def _client(self):
         import httpx
@@ -42,6 +44,8 @@ class OpenWearablesClient:
 
     def recovery_summary(self, oldest: dt.date, newest: dt.date) -> list[dict]:
         """Daily recovery rows: {date, hrv_rmssd_ms, resting_hr_bpm, sleep_hours, recovery_score}."""
+        if not self.config.open_wearables.configured:
+            return []
         if self.offline:
             rows = []
             for w in synthetic.generate()["wellness"]:

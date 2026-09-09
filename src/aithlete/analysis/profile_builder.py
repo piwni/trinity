@@ -22,6 +22,7 @@ from aithlete.models.profile import (
     HealthBlock,
     LoadState,
     RunPhysiology,
+    Sex,
     SwimPhysiology,
     TrainingLoad,
 )
@@ -65,6 +66,18 @@ def build_profile(
 
     if weight:
         p.anthropometrics.weight_kg = Tracked.estimated(float(weight), "intervals.icu wellness", as_of)
+
+    # Sex, height and birthdate come from manual_metrics.json (no connector
+    # supplies them). Without them BMR falls back to a weight-only RMR that runs
+    # ~100 kcal low for a tall athlete, which propagates into every energy
+    # balance figure — so they must survive a profile rebuild, not be hand-edited
+    # into the profile that this function overwrites.
+    if sex := settings.get("sex"):
+        p.anthropometrics.sex = Sex(sex)
+    if height := settings.get("height_cm"):
+        p.anthropometrics.height_cm = Tracked.measured(float(height), "athlete-reported", as_of)
+    if birthdate := settings.get("birthdate"):
+        p.anthropometrics.birthdate = dt.date.fromisoformat(birthdate)
 
     # Bike physiology.
     ftp = bike.get("ftp_w")

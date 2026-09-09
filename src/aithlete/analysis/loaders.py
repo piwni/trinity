@@ -26,6 +26,7 @@ def load_activities(config: Config | None = None) -> pd.DataFrame:
     if df.empty:
         return df
     df["date"] = pd.to_datetime(df["date"]).dt.date
+    df = _apply_power_corrections(df, load_power_corrections(config))
     df = df.sort_values("start_time").reset_index(drop=True)
     return df
 
@@ -66,6 +67,58 @@ def load_manual_metrics(config: Config | None = None) -> dict:
     """
     config = config or get_config()
     return load_json(config.data_dir / "manual_metrics.json", default={})
+
+
+# Everything that scales linearly with what the meter reported. TSS is handled
+# separately because it scales with the square.
+_LINEAR_POWER_COLUMNS = ("np_w", "avg_w", "intensity_factor", "efficiency_factor")
+
+
+def load_power_corrections(config: Config | None = None) -> list[dict]:
+    """Calibration corrections for periods when the power meter mis-read.
+
+    Lives at ``<data_dir>/manual_corrections.json`` — OUTSIDE raw/ so `fetch`
+    never overwrites it. Applied on every load rather than written back, so the
+    raw partitions stay a faithful record of what the device actually reported
+    and a correction can be revised or withdrawn later.
+    """
+    config = config or get_config()
+    doc = load_json(config.data_dir / "manual_corrections.json", default={})
+    return list(doc.get("power_calibration") or [])
+
+
+def _apply_power_corrections(df: pd.DataFrame, corrections: list[dict]) -> pd.DataFrame:
+    """Rescale power, and everything derived from it, over a mis-calibrated period.
+
+    A meter reading low understates power linearly but training load
+    QUADRATICALLY: TSS is proportional to NP x IF and IF is NP/FTP, so a meter
+    25% low costs 56% of the session's TSS. Correcting the watts and leaving TSS
+    alone would leave the load record wrong in a way nothing downstream notices.
+
+    This holds only while FTP is independent of the faulty meter. An FTP *tested*
+    on that same meter absorbs the identical error, leaving IF — and therefore
+    TSS — already correct; such a period must be recorded with the power columns
+    scaled but the load left alone, which this helper deliberately cannot express.
+    """
+    if not corrections or df.empty:
+        return df
+    for c in corrections:
+        factor = float(c["factor"])
+        rows = pd.Series(
+            [dt.date.fromisoformat(c["from"]) <= d <= dt.date.fromisoformat(c["to"])
+             for d in df["date"]],
+            index=df.index,
+        )
+        if sports := c.get("sports"):
+            rows &= df["sport"].isin(sports)
+        if not rows.any():
+            continue
+        for col in _LINEAR_POWER_COLUMNS:
+            if col in df.columns:
+                df.loc[rows, col] = pd.to_numeric(df.loc[rows, col], errors="coerce") * factor
+        if "tss" in df.columns:
+            df.loc[rows, "tss"] = pd.to_numeric(df.loc[rows, "tss"], errors="coerce") * factor**2
+    return df
 
 
 def load_manual_races(config: Config | None = None) -> dict:

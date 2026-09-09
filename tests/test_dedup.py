@@ -28,6 +28,17 @@ def test_dedup_keeps_distinct_sessions():
     assert len(dedup_activities(acts)) == 3
 
 
+def test_merge_wellness_empty_ow_keeps_intervals():
+    """Unconfigured Open Wearables must not invent recovery; Garmin/intervals stays."""
+    iv = [{"id": "2026-04-01", "hrv": 98, "restingHR": 37, "sleepSecs": 7 * 3600, "weight": 73}]
+    merged = merge_wellness(iv, [])
+    assert len(merged) == 1
+    row = merged[0]
+    assert row["hrv_rmssd_ms"] == 98
+    assert row["resting_hr_bpm"] == 37
+    assert row["source"] == "intervals"
+
+
 def test_merge_wellness_prefers_open_wearables_recovery():
     iv = [{"id": "2026-06-01", "hrv": 50, "restingHR": 55, "sleepSecs": 7 * 3600, "weight": 72}]
     ow = [{"date": "2026-06-01", "hrv_rmssd_ms": 80, "resting_hr_bpm": 48, "sleep_hours": 8.0}]
