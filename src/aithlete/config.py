@@ -52,6 +52,23 @@ class OpenWearablesConfig:
 
 
 @dataclass(frozen=True)
+class FoodDataConfig:
+    """USDA FoodData Central — reference composition for foods whose values the
+    food-log app left blank. Free key from https://fdc.nal.usda.gov/api-key-signup.
+
+    Used ONLY as a value source: the product -> food match is decided separately
+    and recorded, so every imputed number traces back to a citable food record.
+    """
+
+    base_url: str
+    api_key: str | None
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.api_key)
+
+
+@dataclass(frozen=True)
 class Config:
     data_dir: Path
     fixtures_dir: Path
@@ -59,6 +76,7 @@ class Config:
     offline: bool
     intervals: IntervalsConfig
     open_wearables: OpenWearablesConfig
+    food_data: FoodDataConfig
 
     # Convenience sub-paths under data_dir.
     @property
@@ -99,5 +117,9 @@ def get_config() -> Config:
             or "http://localhost:8000/api/v1",
             api_key=os.environ.get("OPEN_WEARABLES_API_KEY") or None,
             user_id=os.environ.get("OPEN_WEARABLES_USER_ID") or None,
+        ),
+        food_data=FoodDataConfig(
+            base_url=os.environ.get("FDC_BASE_URL") or "https://api.nal.usda.gov/fdc/v1",
+            api_key=os.environ.get("FDC_API_KEY") or None,
         ),
     )

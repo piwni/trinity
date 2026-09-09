@@ -40,16 +40,55 @@ correlations yourself — read them from the digest.
       `carb_underfuel_days_pct`) — are carbs scaled to hard/long days?
    3. **Protein** (`protein_g_per_kg`, `protein_flag`) — in 1.6-2.2 g/kg?
    4. **Micronutrients** (`micronutrient_flags`) — iron first, then vit D,
-      calcium, magnesium, omega-3.
+      calcium, magnesium, omega-3. **Check `flag` before `pct_of_target`.** A
+      flag of `unknown` means the nutrient is supplied by too few logged food
+      items (`coverage_pct`) for the mean to mean anything — Fitatu's database
+      leaves most micronutrient cells blank, and a blank is not a zero. Report it
+      as "cannot assess from the food log", never as adequate and never as
+      deficient. Only a blood test settles those. `coverage_basis: unavailable`
+      means the partition predates coverage tracking; recommend a re-import.
+      When `imputed_pct > 0`, part of the mean was supplied from a reference food
+      table rather than logged (`coverage_basis: items+reference`) — say so, and
+      treat the figure as a **floor**: the still-uncovered items only add to it.
+      An `unknown` flag whose mean already clears the target is therefore strong
+      evidence AGAINST a deficiency, even though it cannot confirm adequacy.
+      Before accepting any apparent micronutrient shortfall, check whether a
+      staple food is simply unmapped — `aithlete food-gaps --nutrient <field>`
+      ranks the blanks by logged mass, and one unmapped staple can account for a
+      whole "deficiency". To close such a gap, group the products into a concept
+      in `data/food_concepts.json` and run `aithlete food-map`; matches are
+      pinned once settled, so never use `--repin` to "refresh" a working match.
+      For omega-3, read the total alongside its sources: it is a sum over
+      individual fatty acids, and plant ALA converts to the EPA/DHA that matter
+      for recovery at only a few percent. A comfortable total built from grains
+      and oils is not the same finding as one built from fish.
    5. **Diet quality / health** (secondary section): `sugars_pct_energy`,
       `saturated_pct_energy`, `fibre_g`, `alcohol_drinks_per_week`,
       `caffeine_mg`, `weight_kg` trend.
 
 4. **Interpret the recovery associations** (`recovery_correlations`) as
-   hypotheses only. They are single-athlete, observational, confounded by
-   training load. Report `r` and `n`, mark notable ones, and never claim
-   causation. Cross-reference with the training digest's `readiness_flag` and
-   load.
+   hypotheses only. They are single-athlete, observational, and never causal.
+
+   **Lead with `effect_p10_p90`, not `r`.** The effect is how far the outcome
+   actually moves (in `effect_unit`) between a low-normal and high-normal day for
+   that driver; `r` only says how tightly the two series co-move. An effect below
+   `materiality_threshold` is inside the athlete's own day-to-day scatter and is
+   not worth changing behaviour over, however large `r` looks.
+
+   **Quote `r_partial`, not `r`, whenever `controlled_for` is non-empty.** The
+   athlete eats most on their hardest days and hard days depress next-morning
+   recovery on their own, so a raw coefficient is often training load wearing a
+   nutrition costume. Where `r_partial` is much closer to zero than `r`, say so
+   explicitly — "this looked like a carbohydrate effect and is actually load" is
+   a more useful finding than the correlation itself.
+
+   `notable` is already gated on both adjustment and effect size. If nothing is
+   notable, say that plainly rather than promoting the largest coefficient; for a
+   well-fuelled athlete "day-to-day nutrition is not moving your recovery" is the
+   correct and useful answer. Give the reader scale by comparing any effect
+   against the season-long change in the same metric from the training digest.
+
+   Cross-reference with the training digest's `readiness_flag` and load.
 
 5. **Deliver the answer**: a clear "is it OK / what to adjust" verdict, then a
    short prioritized list of concrete, athlete-specific adjustments (the levers

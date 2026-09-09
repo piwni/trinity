@@ -14,8 +14,10 @@
 from __future__ import annotations
 
 import datetime as dt
+from dataclasses import replace
 from pathlib import Path
 
+import pandas as pd
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -33,12 +35,12 @@ from aithlete.analysis.loaders import (
     load_wellness,
 )
 from aithlete.config import get_config
-from aithlete.connectors import fitatu
+from aithlete.connectors import fitatu, food_concepts, food_mappings
 from aithlete.connectors.fetch import fetch_all
+from aithlete.connectors.fooddata import FoodDataClient
 from aithlete.connectors.intervals import IntervalsClient
 from aithlete.models.plan import PlanInputs, TrainingPlan
 from aithlete.models.profile import AthleteProfile
-from aithlete.models.readiness import ReadinessFlag
 from aithlete.planning.validator import validate_plan
 from aithlete.planning.workout_builder import garmin_sync_warnings, plan_to_events
 from aithlete.storage.io import load_json, save_json
@@ -200,10 +202,157 @@ def fitatu_import(
         hint = from_ or str(inbox)
         console.print(f"[yellow]No Fitatu CSVs found at[/] {hint}")
         raise typer.Exit(1)
-    res = fitatu.import_exports(paths)
+    # `like_product` mappings resolve against the log itself, so the composition
+    # table is derived from the very exports being imported.
+    rows = pd.concat([fitatu.parse_export(p) for p in paths], ignore_index=True)
+    reference, unresolved = food_mappings.build_reference(
+        log_composition=fitatu.log_composition(rows))
+    floors = knowledge.load_nutrition_rules()["micronutrients"].get("zero_override_floor") or {}
+    res = fitatu.import_exports(paths, reference, zero_override_floor=floors)
     win = f" window={res['window'][0]}..{res['window'][1]}" if res["window"] else ""
     console.print(f"[bold green]Imported[/] {res['days']} day(s) of nutrition from "
                   f"{res['files']} file(s){win} -> years {res['years']}")
+    if reference:
+        console.print(f"  enriched from reference tables: {len(reference)} mapped product(s)")
+    if unresolved:
+        console.print(f"  [yellow]{len(unresolved)} mapped product(s) unresolved[/] "
+                      "(low confidence, or food not cached and offline)")
+    if not reference and not unresolved:
+        console.print("  [dim]no product mappings yet — run `aithlete food-gaps` to find "
+                      "which blanks are worth closing[/]")
+
+
+@app.command(name="food-gaps")
+def food_gaps(
+    limit: int = typer.Option(25, help="How many unmapped products to report."),
+    nutrient: str = typer.Option(
+        "calcium_mg", help="Rank gaps by the nutrient this product fails to supply."),
+    candidates: bool = typer.Option(
+        False, "--candidates", help="Query FoodData Central for match candidates "
+        "(needs FDC_API_KEY and AITHLETE_OFFLINE=false)."),
+):
+    """Rank food-log products whose nutrient data is blank, worst offenders first.
+
+    Ranking is by mass, not by how often a product appears: 56 entries of kefir
+    matter far more than 56 entries of a spice. Use this to decide which products
+    are worth mapping in data/food_mappings.json — the top ~200 products carry
+    most of the intake, and the long tail can stay unmapped.
+    """
+    inbox = get_config().raw_dir / "fitatu" / "_inbox"
+    paths = fitatu.resolve_inputs(None, inbox)
+    if not paths:
+        console.print(f"[yellow]No Fitatu CSVs found at[/] {inbox}")
+        raise typer.Exit(1)
+
+    rows = pd.concat([fitatu.parse_export(p) for p in paths], ignore_index=True)
+    gaps = fitatu.blank_products(rows, nutrient)
+    mapped = set(food_mappings.load_mappings())
+    gaps = gaps[~gaps["product"].isin(mapped)]
+    if gaps.empty:
+        console.print(f"[green]Every product supplying {nutrient} is logged or mapped.[/]")
+        return
+
+    total_g = float(gaps["grams"].sum())
+    console.print(f"[bold]{len(gaps)} unmapped product(s)[/] with no {nutrient}, "
+                  f"{total_g / 1000:.1f} kg logged in total")
+    table = Table("product", "items", "grams", "share of gap")
+    for _, r in gaps.head(limit).iterrows():
+        table.add_row(str(r["product"])[:58], str(int(r["items"])),
+                      f"{r['grams']:.0f}", f"{r['grams'] / total_g * 100:4.1f}%")
+    console.print(table)
+
+    if not candidates:
+        return
+    client = FoodDataClient()
+    if not client.online:
+        console.print("[yellow]Candidate lookup needs FDC_API_KEY and AITHLETE_OFFLINE=false.[/]")
+        raise typer.Exit(1)
+    console.print("\n[bold]FoodData Central candidates[/] (pick one per product, "
+                  "then record it in data/food_mappings.json):")
+    for _, r in gaps.head(limit).iterrows():
+        console.print(f"\n[cyan]{r['product']}[/]")
+        for c in client.search(str(r["product"])):
+            console.print(f"  {c.fdc_id:>9}  {c.data_type:<14} {c.description[:60]}")
+
+
+@app.command(name="food-map")
+def food_map(
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what each concept resolves to, write nothing."),
+    only: str = typer.Option(
+        "", help="Resolve just the concepts whose key contains this string."),
+    repin: bool = typer.Option(
+        False, "--repin", help="Ignore existing pins and search again. Can CHANGE "
+        "settled matches — scope it with --only."),
+):
+    """Resolve data/food_concepts.json into product -> USDA mappings.
+
+    Concepts group products that pose the same food question, so a match is
+    decided once and applied to the whole group. Rerun after adding concepts for
+    newly logged products; mappings for products not covered by any concept are
+    left untouched, so hand-written entries survive.
+
+    Whatever a concept resolves to is pinned back into the concepts file, which
+    makes reruns both instant and stable. That is not just tidiness: FDC's search
+    ordering shifts between runs, and an unpinned rerun once silently swapped
+    rice for rice FLOUR. Reopening a settled match takes --repin.
+
+    Needs FDC_API_KEY and AITHLETE_OFFLINE=false the first time a food is seen;
+    afterwards the local cache answers and this works offline.
+    """
+    everything = food_concepts.load_concepts()
+    if not everything:
+        console.print(f"[yellow]No concepts at[/] {food_concepts.concepts_path()}")
+        console.print("Use `aithlete food-gaps` to find what needs grouping.")
+        raise typer.Exit(1)
+    concepts = ({k: v for k, v in everything.items() if only.lower() in k.lower()}
+                if only else everything)
+    if not concepts:
+        console.print(f"[yellow]No concept key contains[/] {only!r}")
+        raise typer.Exit(1)
+
+    products = sum(len(c.products) for c in concepts.values())
+    console.print(f"Resolving [bold]{len(concepts)} concept(s)[/] "
+                  f"covering {products} product(s)...")
+    res = food_concepts.resolve(concepts, repin=repin)
+
+    table = Table("concept", "products", "USDA record", "confidence")
+    for key, c in concepts.items():
+        m = next((res.mappings[p] for p in c.products if p in res.mappings), None)
+        table.add_row(key[:24], str(len(c.products)),
+                      (m.fdc_description[:46] if m else "[red]-- none --[/]"),
+                      c.confidence if m else "")
+    console.print(table)
+
+    applied = sum(1 for m in res.mappings.values() if m.trusted)
+    console.print(f"\n[bold]{len(res.mappings)}[/] product mapping(s), "
+                  f"[green]{applied}[/] applicable (high/medium), "
+                  f"{len(res.unmatched)} left unmatched")
+    if res.skipped:
+        console.print(f"\n[yellow]Not applied ({len(res.skipped)} concept(s)):[/]")
+        for key, why in res.skipped:
+            console.print(f"  {key:24} {why}")
+
+    changed = {k: v for k, v in res.chosen.items() if everything[k].pin != v}
+    if changed:
+        console.print(f"\n[bold]{len(changed)} concept(s) pinned[/] to a record:")
+        for key, fdc_id in list(changed.items())[:12]:
+            was = everything[key].pin
+            console.print(f"  {key:24} {f'{was} -> ' if was else ''}{fdc_id}")
+
+    if dry_run:
+        console.print("\n[dim]--dry-run: nothing written.[/]")
+        return
+    # Merge rather than replace: mappings recorded by hand for one-off products
+    # are not represented by any concept and must not be dropped by a rerun.
+    merged = {**food_mappings.load_mappings(), **res.mappings}
+    path = food_mappings.save_mappings(merged, unmatched=res.unmatched)
+    if changed:
+        food_concepts.save_concepts(
+            {**everything,
+             **{k: replace(everything[k], pin=v) for k, v in changed.items()}})
+    console.print(f"\nWrote {len(merged)} mapping(s) -> {path}")
+    console.print("Run `aithlete fitatu-import` to apply them.")
 
 
 @app.command()
@@ -234,17 +383,25 @@ def nutrition(athlete: str = typer.Option("athlete", help="Athlete id.")):
     if digest.key_session_fuel_pct.value is not None:
         console.print(f"  key-session fueling: {digest.key_session_fuel_pct.value}% of hard/long days hit carb target; "
                       f"under-fuelled {digest.carb_underfuel_days_pct.value}% of all days")
-    low = [m for m in digest.micronutrient_flags if m.flag is not ReadinessFlag.GREEN and m.reliable]
+    cmap = {"amber": "yellow", "red": "red"}
+    low = [m for m in digest.micronutrient_flags if m.reliable and m.flag.value in cmap]
     if low:
-        cmap = {"amber": "yellow", "red": "red"}
         console.print("  micronutrient flags: " + ", ".join(
             f"[{cmap[m.flag.value]}]{m.nutrient} {m.pct_of_target:.0f}%[/]" for m in low))
-    under = [m.nutrient for m in digest.micronutrient_flags if not m.reliable]
+    under = [m for m in digest.micronutrient_flags if not m.reliable]
     if under:
-        console.print(f"  [dim]under-logged (intake understated, not assessed): {', '.join(under)}[/]")
-    for c in digest.recovery_correlations:
-        if c.notable:
-            console.print(f"  [dim]assoc[/] {c.driver} -> {c.outcome}: r={c.r} (n={c.n})")
+        detail = ", ".join(
+            f"{m.nutrient} ({m.coverage_pct:.0f}% of items)" if m.coverage_pct is not None
+            else f"{m.nutrient} (coverage unrecorded)" for m in under)
+        console.print(f"  [dim]not assessable from the food log: {detail}[/]")
+    notable = [c for c in digest.recovery_correlations if c.notable]
+    for c in notable:
+        shown = c.r_partial if c.r_partial is not None else c.r
+        adj = f" adj. for {'+'.join(c.controlled_for)}" if c.controlled_for else ""
+        effect = f", {c.effect_p10_p90:+g} {c.effect_unit}" if c.effect_p10_p90 is not None else ""
+        console.print(f"  [dim]assoc[/] {c.driver} -> {c.outcome}: r={shown}{adj}{effect} (n={c.n})")
+    if digest.recovery_correlations and not notable:
+        console.print("  [dim]no nutrition factor moves recovery beyond day-to-day scatter[/]")
     console.print(f"[dim]saved {out} | sha256={digest.sha256()[:16]}[/]")
 
 

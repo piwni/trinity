@@ -24,7 +24,14 @@ energy_availability:
 # --- Energy balance (intake vs total daily expenditure) ----------------------
 # TDEE = BMR * resting_activity_factor + exercise kcal + thermic effect of food.
 energy_balance:
-  bmr_resting_activity_factor: 1.2   # non-exercise daily living (exercise added separately)
+  # Physical activity level for everything that is NOT logged training — sleep,
+  # work, chores, fidgeting. Training kcal are added separately on top, so this
+  # must NOT be one of the usual Harris-Benedict multipliers (those already
+  # bundle exercise in). Reference non-exercise PAL bands: 1.2 is bed rest, a
+  # genuinely sedentary lifestyle is 1.4-1.5, a job spent on your feet is
+  # 1.7-1.9. The previous 1.2 default understated a normal day by ~400 kcal and
+  # manufactured an implausible energy surplus for every athlete.
+  bmr_resting_activity_factor: 1.6
   thermic_effect_of_food_pct: 10     # ~10% of intake
   surplus_amber_pct: 15              # chronic >|15%| off balance worth noting
   deficit_amber_pct: 15
@@ -82,9 +89,58 @@ micronutrients:
   # flag a micronutrient when window mean < this fraction of the (athlete) target.
   deficiency_fraction: 0.7
 
+  # Above this share of reference-supplied values, a shortfall stops being
+  # reportable as one. The asymmetry is deliberate and is about consequences, not
+  # statistics: telling an athlete to supplement on the strength of a number we
+  # mostly looked up in a table is the expensive error, while an estimate that
+  # comfortably CLEARS the target would need the tables to be wrong by tens of
+  # percent, and all in the same direction, to be misleading. So a heavily
+  # imputed nutrient can still report "adequate", but never "deficient" — it
+  # reports "unknown" and asks for a blood test instead.
+  imputed_ceiling: 0.5
+
+  # A logged ZERO that a reference food table contradicts by at least this much
+  # (nutrient's own unit, for that one portion) is treated as a missing value and
+  # replaced. A wrong zero is more dangerous than a blank: the coverage machinery
+  # can see a blank, but a zero looks exactly like a real measurement and drags
+  # the mean down silently. Grated hard cheese logged at 0 mg calcium is the
+  # archetype. Floors are set high enough that rounding noise in a reference
+  # table -- a few mg of calcium in sugar -- never triggers an override.
+  # Nutrients absent from this list have blanks filled but zeros left alone.
+  zero_override_floor:
+    calcium_mg:   20
+    iron_mg:      0.5
+    magnesium_mg: 10
+    potassium_mg: 50
+    zinc_mg:      0.5
+    vitamin_c_mg: 2
+    fibre_g:      0.5
+  # Fitatu's food database leaves most micronutrient cells blank, and a blank is
+  # not a zero. A nutrient supplied by fewer than this fraction of logged FOOD
+  # ITEMS has an understated mean, so it is reported "unknown" rather than
+  # deficient. Measured per item, never per day: one item out of ~17 is enough to
+  # make a daily total non-zero, so a day-level test always reads ~100%.
+  coverage_floor: 0.5
+
 # --- Recovery-correlation reporting ------------------------------------------
 # Associations between prior-day nutrition and next-day recovery (HRV/RHR/sleep)
 # and same-day caffeine/alcohol. Observational only — never causal.
 correlation:
   min_samples: 14                # below this we don't report an association
-  notable_abs_r: 0.25            # |r| at/above this is surfaced as "notable"
+  notable_abs_r: 0.25            # |r| at/above this clears the STRENGTH bar
+  # Confounders regressed out before judging an association. Intake tracks
+  # training load and load depresses next-morning recovery on its own, so an
+  # unadjusted coefficient measures load wearing a nutrition costume.
+  control_for: [tss]
+  # Strength alone is not enough to call something notable — a coefficient says
+  # nothing about how far the outcome actually moves. An association must ALSO
+  # shift the outcome (p10 -> p90 of the driver) by more than the larger of:
+  #   * the athlete's own smallest worthwhile change, 0.5 x SD of that outcome; and
+  #   * the absolute floor below, in the outcome's own units.
+  # The absolute floor is what makes the gate bite. On its own the SWC is
+  # self-referential — the effect scales with SD(outcome) and so does the SWC, so
+  # an SWC-only test reduces to |r| >= 0.2, weaker than notable_abs_r above.
+  materiality_floor:
+    hrv_rmssd_ms: 3.0      # ~1 night's normal scatter; below this is noise
+    resting_hr_bpm: 2.0    # within the beat-to-beat + measurement error band
+    sleep_hours: 0.5       # half an hour; finer than the sleep tracker resolves

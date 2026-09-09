@@ -15,15 +15,18 @@ from __future__ import annotations
 
 import datetime as dt
 
+import numpy as np
 import pandas as pd
 
 from aithlete.analysis import metrics
+from aithlete.connectors import fitatu
 from aithlete.knowledge import load_nutrition_rules
 from aithlete.models.common import Provenance, Trend
 from aithlete.models.context_digest import DigestValue
 from aithlete.models.nutrition_digest import (
     CorrelationFinding,
     MicronutrientFlag,
+    MicronutrientStatus,
     MonthSummary,
     NutritionDigest,
 )
@@ -39,10 +42,31 @@ _MET = {
     "strength": {"easy": 3.5, "moderate": 5.0, "hard": 6.0},
     "other": {"easy": 4.0, "moderate": 6.0,  "hard": 8.0},
 }
+# Normalised power exceeds average power by the variability index, typically
+# ~1.05 for outdoor endurance riding. Applied when only np_w is on file so a
+# ride's work isn't over-counted.
+_NP_TO_AVG_W = 0.95
+
 _BIKE_SPORTS = {"bike", "ride", "virtualride", "ebikeride"}
 _SWIM_SPORTS = {"swim", "openwaterswim"}
 _RUN_SPORTS = {"run", "trailrun", "treadmill"}
 _STRENGTH_SPORTS = {"weighttraining", "workout", "yoga"}
+
+
+def _run_met(speed_kmh: float) -> float | None:
+    """MET for level running from the ACSM metabolic equation.
+
+    ``VO2 (ml/kg/min) = 0.2 * m/min + 3.5``; MET is that over 3.5. A single
+    table value cannot serve running, because the cost scales almost linearly
+    with speed: 10 km/h is 10.5 MET but 13.5 km/h is 13.9, so a fast athlete
+    scored off the table loses about a quarter of the session's energy.
+
+    Returns ``None`` outside a plausible running range, so the caller falls back
+    to the table rather than trusting a bad distance or duration.
+    """
+    if not (6.0 <= speed_kmh <= 25.0):
+        return None
+    return (0.2 * (speed_kmh * 1000 / 60) + 3.5) / 3.5
 
 
 def _sport_family(sport: str) -> str:
@@ -103,17 +127,37 @@ def exercise_energy_by_day(activities: pd.DataFrame, weight: float) -> pd.DataFr
         intensity = pd.Series(["moderate"] * len(df), index=df.index)
     intensity = intensity.fillna("moderate")
 
-    met = [
-        _MET.get(f, _MET["other"]).get(i if i in ("easy", "moderate", "hard") else "moderate")
-        for f, i in zip(fam, intensity, strict=False)
-    ]
+    # Running is scored from actual speed where distance allows it; every other
+    # sport uses the intensity table.
+    dist_km = (
+        pd.to_numeric(df["distance_m"], errors="coerce") / 1000.0
+        if "distance_m" in df.columns
+        else pd.Series([pd.NA] * len(df), index=df.index)
+    )
+    speed = (dist_km / dur_h).where(dur_h > 0)
+
+    met = []
+    for f, i, spd in zip(fam, intensity, speed, strict=False):
+        table = _MET.get(f, _MET["other"]).get(
+            i if i in ("easy", "moderate", "hard") else "moderate")
+        paced = _run_met(float(spd)) if f == "run" and pd.notna(spd) else None
+        met.append(paced if paced is not None else table)
     met_kcal = pd.Series(met, index=df.index) * weight * dur_h
 
     # Power-based energy is a CYCLING approximation only (running/other power
     # meters don't share the ~24% efficiency identity), so gate on bike family.
-    avgw = df["avg_w"] if "avg_w" in df.columns else pd.Series([pd.NA] * len(df), index=df.index)
-    has_power = (fam == "bike") & avgw.notna()
-    power_kcal = avgw.fillna(0) * df["duration_s"].fillna(0) / 1000.0  # kJ ≈ kcal
+    # Prefer average power, which is the quantity work actually depends on. When
+    # only normalised power is available — the common case, since intervals.icu
+    # populates np_w far more often than avg_w — discount it, because NP weights
+    # surges and always exceeds average power for the same ride.
+    def _col(name: str) -> pd.Series:
+        return df[name] if name in df.columns else pd.Series([pd.NA] * len(df), index=df.index)
+
+    watts = _col("avg_w")
+    npw = pd.to_numeric(_col("np_w"), errors="coerce") * _NP_TO_AVG_W
+    watts = pd.to_numeric(watts, errors="coerce").fillna(npw)
+    has_power = (fam == "bike") & watts.notna()
+    power_kcal = watts.fillna(0) * df["duration_s"].fillna(0) / 1000.0  # kJ ≈ kcal
 
     kcal = met_kcal.where(~has_power, power_kcal)
     out = pd.DataFrame({"date": df["date"], "exercise_kcal": kcal, "exercise_hours": dur_h})
@@ -132,6 +176,59 @@ def _carb_tier(tss: float, tiers: dict) -> tuple[str, float, float]:
     return "very_high", float(cfg["min_g_per_kg"]), float(cfg["max_g_per_kg"])
 
 
+def _covered_days(n: pd.DataFrame, nutrient: str) -> pd.Series | None:
+    """Days whose per-item counts exist, i.e. the days a coverage figure describes.
+
+    The mean has to be taken over exactly these days too. Partitions written
+    before item-level tracking sum blanks as zeros, so mixing them into the mean
+    while quoting coverage from the newer days produces a figure like "98%
+    covered, 841 mg" where the 841 is mostly driven by the days at 0% coverage —
+    two different populations reported as one.
+    """
+    col = fitatu.coverage_field(nutrient)
+    if col not in n.columns or "item_count" not in n.columns:
+        return None
+    known = pd.to_numeric(n[col], errors="coerce").notna() & \
+        pd.to_numeric(n["item_count"], errors="coerce").notna()
+    return known if known.any() else None
+
+
+def _item_coverage(n: pd.DataFrame, nutrient: str) -> tuple[float, int, float] | None:
+    """Fraction of logged food items with a KNOWN value for ``nutrient``, how many
+    days that is measured over, and what share of those values was imputed.
+
+    A value is known when the athlete logged it OR a reference food table supplied
+    it for a mapped product. Both make the day's total trustworthy, so both count
+    toward coverage — but the imputed share is carried separately, because
+    "1000 mg of calcium, 60% of it from a food table" is a materially weaker claim
+    than the same number fully logged.
+
+    Days written before per-item tracking existed carry no count and are excluded
+    rather than treated as zero-coverage — a partially upgraded store still yields
+    a usable estimate from the days that do have it. Returns ``None`` only when no
+    day has coverage at all, which means "unknown", never "zero".
+    """
+    known = _covered_days(n, nutrient)
+    if known is None:
+        return None
+    counts = pd.to_numeric(n[fitatu.coverage_field(nutrient)], errors="coerce")
+    items = pd.to_numeric(n["item_count"], errors="coerce")
+    imp_col = fitatu.imputed_field(nutrient)
+    imputed = (
+        pd.to_numeric(n[imp_col], errors="coerce").fillna(0.0)
+        if imp_col in n.columns
+        else pd.Series(0.0, index=n.index)
+    )
+    total = float(items[known].sum())
+    if total <= 0:
+        return None
+    logged = float(counts[known].sum())
+    supplied = float(imputed[known].sum())
+    covered = logged + supplied
+    imputed_share = supplied / covered if covered > 0 else 0.0
+    return float(covered / total), int(known.sum()), imputed_share
+
+
 def _corr(df: pd.DataFrame, xcol: str, ycol: str, method: str, min_n: int) -> tuple[float, int] | None:
     sub = df[[xcol, ycol]].dropna()
     if len(sub) < min_n:
@@ -142,6 +239,59 @@ def _corr(df: pd.DataFrame, xcol: str, ycol: str, method: str, min_n: int) -> tu
     if pd.isna(r):
         return None
     return float(round(r, 3)), int(len(sub))
+
+
+# Residual variance below this fraction of the original means the controls
+# explain the series entirely; anything left is numerical noise.
+_COLLINEAR_VAR_RATIO = 1e-8
+
+
+def _residualize(y: np.ndarray, controls: np.ndarray) -> np.ndarray:
+    """Return ``y`` with the linear influence of ``controls`` removed (OLS)."""
+    design = np.column_stack([np.ones(len(y)), controls])
+    beta, *_ = np.linalg.lstsq(design, y, rcond=None)
+    return y - design @ beta
+
+
+def _adjusted_association(
+    df: pd.DataFrame, xcol: str, ycol: str, controls: list[str], min_n: int,
+) -> tuple[float, float, int] | None:
+    """Partial correlation of x with y controlling for ``controls``, plus the
+    modelled p10->p90 effect on y in y's own units.
+
+    The effect is what makes a coefficient actionable: r says how tightly two
+    series move together, the effect says how far y actually travels between a
+    low-normal and a high-normal day for x. Both come from the residualized fit,
+    so neither is inflated by the controls.
+    """
+    live = [c for c in controls if c in df.columns and df[c].std(ddof=0) > 0]
+    sub = df[[xcol, ycol, *live]].dropna()
+    if len(sub) < min_n or sub[xcol].std(ddof=0) == 0 or sub[ycol].std(ddof=0) == 0:
+        return None
+
+    x, y = sub[xcol].to_numpy(float), sub[ycol].to_numpy(float)
+    if live:
+        ctrl = sub[live].to_numpy(float)
+        xr, yr = _residualize(x, ctrl), _residualize(y, ctrl)
+        # When the driver is (near-)collinear with the controls, the residuals are
+        # floating-point dust and correlating them yields a large, entirely
+        # meaningless coefficient. The honest reading is that the controls already
+        # explain the driver, so nothing is left to attribute to it.
+        for resid, base in ((xr, x), (yr, y)):
+            if base.var() > 0 and resid.var() / base.var() < _COLLINEAR_VAR_RATIO:
+                return 0.0, 0.0, int(len(sub))
+    else:
+        xr, yr = x - x.mean(), y - y.mean()
+
+    if xr.std(ddof=0) == 0 or yr.std(ddof=0) == 0:
+        return None
+    r_partial = float(np.corrcoef(xr, yr)[0, 1])
+    if not np.isfinite(r_partial):
+        return None
+
+    slope = float(np.polyfit(xr, yr, 1)[0])
+    spread = float(np.percentile(x, 90) - np.percentile(x, 10))
+    return round(r_partial, 3), round(slope * spread, 2), int(len(sub))
 
 
 def _dv(value, unit, *, samples=0, date_from=None, date_to=None, source, trend=Trend.UNKNOWN) -> DigestValue:
@@ -284,38 +434,111 @@ def build_digest(
         missing.append("no key (hard/long) training days in window to assess session fueling")
 
     # --- micronutrients ---
-    # Fitatu leaves most micronutrient cells blank per product, so a low mean is
-    # usually under-logging, not deficiency. We report per-nutrient coverage and
-    # mark a flag unreliable when too few days carry any value for it.
+    # Fitatu leaves most micronutrient cells blank per product, so a low window
+    # mean is usually under-logging, not deficiency. Coverage MUST be measured per
+    # food item, not per day: a day aggregates ~17 items, so one yoghurt carrying
+    # an iron value makes the whole day non-zero and a day-level test reports ~100%
+    # coverage for a nutrient only 29% of items actually supply.
     micros = rules["micronutrients"]
     frac = micros["deficiency_fraction"]
-    coverage_floor = 0.5
-    unreliable_any = False
+    coverage_floor = float(micros.get("coverage_floor", 0.5))
+    imputed_ceiling = float(micros.get("imputed_ceiling", 0.5))
+    unreliable: list[str] = []
+    unmeasurable: list[str] = []
+    heavily_imputed: list[tuple[str, float]] = []
+    imputation_led_shortfall: list[str] = []
+    excessive: list[str] = []
+    partial_window = 0
     for nutrient, cfg in micros.items():
         if not isinstance(cfg, dict) or nutrient not in n.columns:
             continue
         target = float(cfg.get("athlete_target", cfg.get("target")))
-        mean_val = float(n[nutrient].mean())
-        coverage = float((n[nutrient] > 0).mean())
+        # Average only over the days the coverage figure describes, so the number
+        # and its reliability refer to the same population.
+        covered = _covered_days(n, nutrient)
+        mean_val = float(n[nutrient][covered].mean() if covered is not None
+                         else n[nutrient].mean())
         pct = (mean_val / target * 100) if target else 0.0
-        reliable = coverage >= coverage_floor
-        if not reliable:
-            flag = ReadinessFlag.GREEN  # don't alarm on under-logged data
-            unreliable_any = True
-        elif pct < frac * 100 * 0.7:
-            flag = ReadinessFlag.RED
-        elif pct < frac * 100:
-            flag = ReadinessFlag.AMBER
+
+        measured = _item_coverage(n, nutrient)
+        if measured is None:
+            coverage, cov_days, imputed_share = None, 0, 0.0
+            basis, reliable = "unavailable", False
+            unmeasurable.append(nutrient)
         else:
-            flag = ReadinessFlag.GREEN
+            coverage, cov_days, imputed_share = measured
+            basis = "items+reference" if imputed_share > 0 else "items"
+            reliable = coverage >= coverage_floor
+            if cov_days < len(n):
+                partial_window = max(partial_window, len(n) - cov_days)
+            if not reliable:
+                unreliable.append(nutrient)
+            if imputed_share > 0:
+                heavily_imputed.append((nutrient, imputed_share))
+
+        upper = cfg.get("upper")
+        if not reliable:
+            # Sparse logging understates intake by an unknown amount, so neither
+            # "deficient" nor "adequate" is supportable. Say so.
+            flag = MicronutrientStatus.UNKNOWN
+        elif upper is not None and mean_val > float(upper):
+            # Some nutrients have a ceiling, not just a floor. Testing only the
+            # floor reported sodium at triple its target as "green".
+            flag = (MicronutrientStatus.RED if mean_val > float(upper) * 1.5
+                    else MicronutrientStatus.AMBER)
+            excessive.append(nutrient)
+        elif pct < frac * 100 * 0.7:
+            flag = MicronutrientStatus.RED
+        elif pct < frac * 100:
+            flag = MicronutrientStatus.AMBER
+        else:
+            flag = MicronutrientStatus.GREEN
+
+        if flag in (MicronutrientStatus.RED, MicronutrientStatus.AMBER) \
+                and imputed_share > imputed_ceiling:
+            # An actionable verdict this dependent on reference tables cannot
+            # carry a decision to supplement or to cut back — the shortfall or
+            # excess could be the imputation. "Adequate" survives heavy
+            # imputation because it prompts no intervention; a verdict does not.
+            flag = MicronutrientStatus.UNKNOWN
+            reliable = False
+            imputation_led_shortfall.append(nutrient)
+            if nutrient in excessive:
+                excessive.remove(nutrient)
         digest.micronutrient_flags.append(MicronutrientFlag(
             nutrient=nutrient, mean_intake=round(mean_val, 2), target=target,
             unit=cfg.get("unit", ""), pct_of_target=round(pct, 1), flag=flag,
-            coverage_pct=round(coverage * 100, 1), reliable=reliable,
+            coverage_pct=None if coverage is None else round(coverage * 100, 1),
+            coverage_basis=basis, coverage_days=cov_days, reliable=reliable,
+            imputed_pct=round(imputed_share * 100, 1),
         ))
-    if unreliable_any:
-        missing.append("some micronutrients are under-logged in Fitatu (low day coverage) -> "
-                       "their intake is understated; treat those flags as 'unknown', not deficient")
+    if partial_window:
+        missing.append(
+            f"{partial_window} of {len(n)} logged days predate per-item nutrient tracking -> "
+            "micronutrient coverage is estimated from the remaining days; re-import those "
+            "Fitatu exports for a full-window figure")
+    if imputation_led_shortfall:
+        missing.append(
+            f"{', '.join(imputation_led_shortfall)} came out below target, but over "
+            f"{imputed_ceiling:.0%} of the intake was filled from reference tables -> the "
+            "shortfall may be the imputation rather than the diet. Reported as unknown; "
+            "settle it with a blood test, not a supplement")
+    if heavily_imputed:
+        worst = sorted(heavily_imputed, key=lambda kv: -kv[1])
+        missing.append(
+            "reference-table values fill part of these means, so they are weaker than a fully "
+            "logged figure: "
+            + ", ".join(f"{k} {v:.0%}" for k, v in worst[:6])
+            + " -> see data/food_mappings.json for which product maps to which food")
+    if unreliable:
+        missing.append(
+            f"{len(unreliable)} micronutrients are supplied by under {coverage_floor:.0%} of logged "
+            f"food items ({', '.join(unreliable)}) -> their means are understated by an unknown "
+            "amount and are reported as 'unknown', not deficient. Only a blood test can settle these")
+    if unmeasurable:
+        missing.append(
+            f"{len(unmeasurable)} micronutrients have no per-item coverage recorded (partition "
+            "predates coverage tracking) -> re-import those Fitatu exports to assess them")
     if profile is not None and profile.anthropometrics.sex == Sex.OTHER:
         assumptions.append("sex unknown -> male micronutrient targets (iron RDA differs for women)")
 
@@ -367,11 +590,42 @@ def build_digest(
     return digest
 
 
+_OUTCOME_UNITS = {"hrv_rmssd_ms": "ms", "resting_hr_bpm": "bpm", "sleep_hours": "h"}
+
+
+def _materiality_threshold(series: pd.Series, floor: float | None) -> float | None:
+    """How far an association must move the outcome before it is worth reporting.
+
+    Two anchors, whichever is larger:
+
+    * the athlete's own noise band, 0.5 x SD — the definition ``analysis.readiness``
+      already uses for the HRV SWC, applied to whichever outcome is under test;
+    * an absolute clinical floor from the rulebook.
+
+    The absolute floor is what makes the gate bite. On its own the SWC is
+    self-referential: the p10-p90 effect is roughly ``2.56 * r * SD(outcome)`` and
+    the SWC is ``0.5 * SD(outcome)``, so an SWC-only test reduces to ``|r| >= 0.2``
+    — weaker than the strength bar it is meant to supplement, and therefore never
+    binding. It also collapses to nothing in a window where the outcome barely
+    moves, which is exactly when a large-looking coefficient means least.
+    """
+    vals = series.dropna()
+    swc = None
+    if len(vals) >= 3:
+        sd = float(vals.std(ddof=1))
+        swc = 0.5 * sd if sd > 0 else None
+    anchors = [a for a in (floor, swc) if a is not None]
+    return round(max(anchors), 2) if anchors else None
+
+
 def _recovery_correlations(n: pd.DataFrame, wellness: pd.DataFrame, rules: dict) -> list[CorrelationFinding]:
     if wellness.empty:
         return []
-    min_n = rules["correlation"]["min_samples"]
-    notable = rules["correlation"]["notable_abs_r"]
+    cfg = rules["correlation"]
+    min_n = cfg["min_samples"]
+    notable_r = cfg["notable_abs_r"]
+    floors = cfg.get("materiality_floor") or {}
+    controls = list(cfg.get("control_for", ["tss"]))
     # reindex (not hard-index) so a wellness frame missing a column yields NaN
     # rather than a KeyError; _corr then skips it via dropna + min_n.
     well = wellness.reindex(columns=["date", "hrv_rmssd_ms", "resting_hr_bpm", "sleep_hours"])
@@ -400,8 +654,28 @@ def _recovery_correlations(n: pd.DataFrame, wellness: pd.DataFrame, rules: dict)
         if res is None:
             continue
         r, count = res
+
+        # `tss` is the dominant confound for every nutrition driver: intake tracks
+        # training load, and load depresses next-morning recovery on its own. A raw
+        # coefficient therefore measures load wearing a nutrition costume.
+        adjusted = _adjusted_association(frame, xcol, ycol, controls, min_n)
+        r_partial, effect, used = (None, None, [])
+        if adjusted is not None:
+            r_partial, effect, _ = adjusted
+            used = [c for c in controls if c in frame.columns and frame[c].std(ddof=0) > 0]
+
+        threshold = _materiality_threshold(frame[ycol], floors.get(ycol))
+
+        # Notable requires BOTH: the association survives confounder adjustment,
+        # AND it moves the outcome further than the athlete's own noise band.
+        strong = abs(r_partial if r_partial is not None else r) >= notable_r
+        material = threshold is None or (effect is not None and abs(effect) >= threshold)
         findings.append(CorrelationFinding(
             driver=xcol, outcome=("next_day_" if lag else "same_day_") + ycol,
-            method=method, r=r, n=count, lag_days=lag, notable=abs(r) >= notable, note=note,
+            method=method, r=r, n=count, lag_days=lag,
+            notable=strong and material, note=note,
+            r_partial=r_partial, controlled_for=used,
+            effect_p10_p90=effect, effect_unit=_OUTCOME_UNITS.get(ycol),
+            materiality_threshold=threshold,
         ))
     return findings

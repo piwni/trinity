@@ -12,12 +12,28 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from aithlete import SCHEMA_VERSION
 from aithlete.models.context_digest import DigestValue
 from aithlete.models.readiness import ReadinessFlag
+
+
+class MicronutrientStatus(str, Enum):
+    """Traffic light plus an explicit UNKNOWN.
+
+    Mirrors :class:`ReadinessFlag`'s values so existing readers keep working, but
+    adds the state the traffic light cannot express: the logged data is too sparse
+    to say anything. Previously that case was reported as GREEN ("don't alarm"),
+    which reads as "intake is adequate" — an equally unfounded claim.
+    """
+
+    GREEN = "green"
+    AMBER = "amber"
+    RED = "red"
+    UNKNOWN = "unknown"
 
 
 class MicronutrientFlag(BaseModel):
@@ -27,9 +43,18 @@ class MicronutrientFlag(BaseModel):
     target: float
     unit: str
     pct_of_target: float
-    flag: ReadinessFlag
-    coverage_pct: float = 100.0   # % of logged days with a non-zero value for this nutrient
-    reliable: bool = True         # False when coverage is too low to trust the flag
+    flag: MicronutrientStatus
+    # % of logged FOOD ITEMS that supplied a value for this nutrient. None when the
+    # partition predates coverage tracking. A day-level measure is useless here:
+    # one item out of ~17 makes the daily total non-zero.
+    coverage_pct: float | None = None
+    coverage_basis: str = "items"   # "items" | "items+reference" | "unavailable"
+    coverage_days: int = 0          # logged days the coverage figure is measured over
+    reliable: bool = True           # False when coverage is too low to trust the flag
+    # Share of the COVERED items whose value came from a reference food table
+    # rather than the athlete's log. Coverage says how much of the intake we can
+    # account for; this says how much of that we had to supply ourselves.
+    imputed_pct: float = 0.0
 
 
 class CorrelationFinding(BaseModel):
@@ -44,6 +69,23 @@ class CorrelationFinding(BaseModel):
     lag_days: int        # 0 = same day, 1 = next-day outcome
     notable: bool
     note: str | None = None
+
+    # --- confounder adjustment -------------------------------------------------
+    # Raw `r` conflates the driver with training load: the athlete eats most on the
+    # hardest days, and hard days depress next-morning HRV on their own. `r_partial`
+    # is the association with `controlled_for` regressed out.
+    r_partial: float | None = None
+    controlled_for: list[str] = Field(default_factory=list)
+
+    # --- effect size -----------------------------------------------------------
+    # A coefficient says how tightly two things move together, not how far the
+    # outcome actually moves. `effect_p10_p90` is the modelled change in the outcome
+    # (in `effect_unit`) between a low-normal and high-normal day for this driver,
+    # after adjustment. Compare against `materiality_threshold`, the athlete's own
+    # smallest worthwhile change (0.5 x SD of the outcome).
+    effect_p10_p90: float | None = None
+    effect_unit: str | None = None
+    materiality_threshold: float | None = None
 
 
 class MonthSummary(BaseModel):

@@ -8,6 +8,10 @@
 /data/calendar-*.json
 /data/manual_metrics.json
 /data/manual_races.json
+/data/manual_corrections.json
+# Both name every product the athlete eats — a food diary by another route.
+/data/food_mappings.json
+/data/food_concepts.json
 !/data/**/.gitkeep
 
 # Keep curated, non-personal fixtures (synthetic athlete) but ignore real cassettes.
