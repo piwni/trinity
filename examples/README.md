@@ -24,8 +24,8 @@ examples/
 
 `reports/` also holds two derived documents for the 2028-b plan: a short
 "this week to year end" view (`trinity-plan-2028-b-to-year-end.pdf`, from
-`scripts/build_horizon.py`) and a two-page brief for a coach
-(`coach-brief-2028-b.pdf`, from `scripts/md_to_pdf.py`).
+`trinity build-horizon`) and a two-page brief for a coach
+(`coach-brief-2028-b.pdf`, a markdown note through `trinity render-pdf`).
 
 ## What a spec drives
 
@@ -36,28 +36,33 @@ different season, copy a spec and edit it; `season-2026-malbork.yaml` is the
 smallest one to start from.
 
 The 2028 specs also declare the FTP and CdA values their prose is allowed to
-state. `build_plan` lints the spec first and refuses to build if the text
-disagrees with those numbers or with `knowledge/triathlon/facts.yaml`.
+state. `trinity build-plan` lints the spec first and refuses to build if the
+text disagrees with those numbers or with the dated facts in
+`src/trinity/knowledge/triathlon/facts.yaml`.
 
 ## Regenerate one yourself
 
-The scripts read the spec and the data dir:
+The commands read the spec and the data dir:
 
 ```bash
 export TRINITY_DATA_DIR="$PWD/examples/data"
 
 # 1. Build the plan from the spec, then run it through the validator.
-uv run python scripts/build_plan.py examples/season-2026-malbork.yaml
+uv run trinity build-plan examples/season-2026-malbork.yaml
 uv run trinity validate examples/data/plans/goal-2026-malbork.json
 
 # 2. Build the HTML report (metrics computed from examples/data, copy from the spec).
-uv run python scripts/build_report.py examples/season-2026-malbork.yaml
+uv run trinity build-report examples/season-2026-malbork.yaml
 
-# 3. Render the PDF (any headless Chromium works).
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-  --headless --disable-gpu --no-pdf-header-footer \
-  --print-to-pdf="examples/data/reports/trinity-plan-2026.pdf" \
-  "file://$PWD/examples/data/reports/goal-2026-malbork.html"
+# 3. Render the PDF (needs Chrome or Chromium).
+uv run trinity render-pdf examples/data/reports/goal-2026-malbork.html \
+  examples/data/reports/trinity-plan-2026.pdf
+```
+
+The short view of the 2028-b plan was built with:
+
+```bash
+uv run trinity build-horizon examples/season-2028-b.yaml --start 2026-10-05 --label "Plan B"
 ```
 
 `trinity validate` prints every error and warning plus the projected race-day
@@ -74,6 +79,6 @@ Don't point `TRINITY_DATA_DIR` at `examples/`. Leave it unset (it defaults to
 uv run trinity fetch --reset --since 2025-01-01   # pull your intervals.icu history
 uv run trinity profile                            # build data/profiles/athlete.json
 cp examples/season-2026-malbork.yaml data/my-season.yaml   # edit your races/targets
-uv run python scripts/build_plan.py data/my-season.yaml
-uv run python scripts/build_report.py data/my-season.yaml
+uv run trinity build-plan data/my-season.yaml
+uv run trinity build-report data/my-season.yaml
 ```

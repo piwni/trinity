@@ -19,9 +19,15 @@ except ImportError:  # pragma: no cover - dotenv is a declared dependency
         return False
 
 
-def _project_root() -> Path:
-    # src/trinity/config.py -> repo root is three parents up.
-    return Path(__file__).resolve().parents[2]
+def _base_dir() -> Path:
+    """Where ``data/`` and ``.env`` are looked for by default.
+
+    In a source checkout that is the repo root (src/trinity/config.py is three
+    levels down), whatever the current directory. Installed as a package there is
+    no repo, so it is the directory the command runs from.
+    """
+    root = Path(__file__).resolve().parents[2]
+    return root if (root / "pyproject.toml").is_file() else Path.cwd()
 
 
 def _as_bool(value: str | None, default: bool) -> bool:
@@ -98,15 +104,18 @@ class Config:
 
 @lru_cache(maxsize=1)
 def get_config() -> Config:
-    root = _project_root()
+    root = _base_dir()
     load_dotenv(root / ".env")
 
     data_dir = Path(os.environ.get("TRINITY_DATA_DIR") or (root / "data")).resolve()
+    # The rulebooks ship inside the package; TRINITY_KNOWLEDGE_DIR swaps in a tuned copy.
+    knowledge_dir = Path(os.environ.get("TRINITY_KNOWLEDGE_DIR")
+                         or Path(__file__).resolve().parent / "knowledge").resolve()
 
     return Config(
         data_dir=data_dir,
         fixtures_dir=data_dir / "fixtures",
-        knowledge_dir=root / "knowledge",
+        knowledge_dir=knowledge_dir,
         offline=_as_bool(os.environ.get("TRINITY_OFFLINE"), default=True),
         intervals=IntervalsConfig(
             api_key=os.environ.get("INTERVALS_API_KEY") or None,

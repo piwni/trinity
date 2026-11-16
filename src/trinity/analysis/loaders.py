@@ -9,6 +9,7 @@ import pandas as pd
 
 from trinity.config import Config, get_config
 from trinity.storage.io import load_json
+from trinity.storage.paths import DEFAULT_ATHLETE
 
 
 def _read_partitions(root: Path) -> pd.DataFrame:
@@ -40,7 +41,7 @@ def load_durability(config: Config | None = None) -> dict:
     it can be recomputed or withdrawn without touching the raw record.
     """
     config = config or get_config()
-    doc = load_json(config.data_dir / "durability-athlete.json", default={})
+    doc = load_json(config.data_dir / f"durability-{DEFAULT_ATHLETE}.json", default={})
     return dict(doc.get("activities") or {})
 
 

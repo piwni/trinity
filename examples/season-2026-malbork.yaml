@@ -1,7 +1,7 @@
 # Season spec — the single athlete/season-specific input to the plan + report
 # engines. Everything here is data, not code: edit this file (or copy it) to
 # build a plan for a different athlete or season. The periodization engine
-# (scripts/build_plan.py) and the report engine (scripts/build_report.py) read
+# (`trinity build-plan`) and the report engine (`trinity build-report`) read
 # it and stay generic.
 #
 # This particular file is the committed EXAMPLE: a real 2026 season (used with

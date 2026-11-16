@@ -26,9 +26,8 @@ from pathlib import Path
 
 import yaml
 
+from trinity import knowledge
 from trinity.planning.validator import Issue, Severity
-
-FACTS_PATH = Path(__file__).resolve().parents[3] / "knowledge" / "triathlon" / "facts.yaml"
 
 # "on FTP 258", "FTP 265", "on the real 245 W FTP", "on 250 W FTP"
 _FTP_USE = re.compile(
@@ -58,10 +57,13 @@ def _add(out: list[Issue], code: str, msg: str, sev: Severity = Severity.ERROR) 
     out.append(Issue(code=code, severity=sev, message=msg, week_index=None))
 
 
-def _load_facts(path: Path = FACTS_PATH) -> list[dict]:
+def _load_facts(path: Path | None = None) -> list[dict]:
+    """The shipped facts table, or the one at ``path`` when a caller supplies its own."""
+    if path is None:
+        return knowledge.load_facts()
     if not path.exists():
         return []
-    return list((yaml.safe_load(path.read_text()) or {}).get("facts") or [])
+    return list((yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("facts") or [])
 
 
 def _clock_s(text, *, near: float | None = None) -> float | None:
@@ -89,7 +91,7 @@ def _fmt(s: float) -> str:
     return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
 
 
-def lint_spec(spec: dict, raw_text: str = "", facts_path: Path = FACTS_PATH,
+def lint_spec(spec: dict, raw_text: str = "", facts_path: Path | None = None,
               tolerance_s: float = 90.0) -> list[Issue]:
     out: list[Issue] = []
     meta = spec.get("meta") or {}

@@ -8,7 +8,7 @@ as activities/wellness, so ``loaders.load_nutrition`` can read it uniformly.
 
 Only macro/micro *sums* are derived here (deterministic math). Judgment about
 whether the diet is adequate lives in ``analysis/nutrition.py`` + the
-nutritionist skill.
+nutrition-review skill.
 """
 
 from __future__ import annotations

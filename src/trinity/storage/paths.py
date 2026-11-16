@@ -22,6 +22,40 @@ def context_path(athlete: str = DEFAULT_ATHLETE) -> Path:
     return get_config().context_dir / f"{athlete}.json"
 
 
+def readiness_path(athlete: str = DEFAULT_ATHLETE) -> Path:
+    """Today's readiness report, folded into the coach's context digest."""
+    return get_config().context_dir / f"readiness-{athlete}.json"
+
+
+def nutrition_digest_path(athlete: str = DEFAULT_ATHLETE) -> Path:
+    """The dietician's digest."""
+    return get_config().context_dir / f"nutrition-{athlete}.json"
+
+
+def health_digest_path(athlete: str = DEFAULT_ATHLETE) -> Path:
+    """The doctor's digest."""
+    return get_config().context_dir / f"health-{athlete}.json"
+
+
+def health_records_path() -> Path:
+    """Hand-entered lab panels (bloodwork) and other health entries. Private;
+    nothing fetches into it or overwrites it."""
+    return get_config().data_dir / "health" / "records.yaml"
+
+
+def durability_path(athlete: str = DEFAULT_ATHLETE) -> Path:
+    """Stream-computed decoupling / fade. Outside raw/ so `fetch` never overwrites it."""
+    return get_config().data_dir / f"durability-{athlete}.json"
+
+
+def aero_path(athlete: str = DEFAULT_ATHLETE) -> Path:
+    return get_config().data_dir / f"aero-{athlete}.json"
+
+
+def reports_dir() -> Path:
+    return get_config().data_dir / "reports"
+
+
 def active_plan_path(athlete: str = DEFAULT_ATHLETE) -> Path:
     """Pointer file to the currently active plan (so adjust-plan finds it)."""
     return get_config().plans_dir / f"{athlete}-active.json"

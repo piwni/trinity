@@ -1,22 +1,11 @@
-"""build_plan.py periodization engine — goal-race selection and spec compile."""
+"""Season periodization engine — goal-race selection and spec compile."""
 
 from __future__ import annotations
 
 import datetime as dt
-import importlib.util
-from pathlib import Path
 
-
-def _build_plan_mod():
-    path = Path(__file__).resolve().parents[1] / "scripts" / "build_plan.py"
-    spec = importlib.util.spec_from_file_location("trinity_build_plan", path)
-    mod = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(mod)
-    return mod
-
-
-build_plan = _build_plan_mod().build_plan
+from trinity.models.plan import IntensityClass
+from trinity.planning.season import build_microcycle, build_plan
 
 
 def _spec(*races):
@@ -60,11 +49,10 @@ def test_build_plan_uses_latest_a_race_as_goal():
 
 def test_flat_strides_land_on_thursday_easy_run():
     """The strides note describes Thursday. It must not be pasted onto the key run."""
-    mod = _build_plan_mod()
-    sessions = mod.build_microcycle(
+    sessions = build_microcycle(
         dt.date(2026, 9, 28),
         target_h=9.4,
-        key=mod.IntensityClass.MODERATE,
+        key=IntensityClass.MODERATE,
         long_ride_h=2.5,
         long_run_h=1.4,
         brick_run_h=0.5,

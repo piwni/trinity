@@ -21,7 +21,7 @@ plan, keep it safe via the same validator, and re-push only the changed events.
    and the active plan `data/plans/athlete-active.json`.
 
 2. **Decide the adjustment from the readiness gate** (see
-   `knowledge/triathlon/readiness.yaml`):
+   `src/trinity/knowledge/triathlon/readiness.yaml`):
    - **RED** (e.g. below-neck illness, sustained HRV suppression, ACWR > 1.5,
      severe sleep debt): replace today's (and likely the next 1–3 days') hard work
      with rest or easy aerobic; follow the illness return-to-play steps. Do not

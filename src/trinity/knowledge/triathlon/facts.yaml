@@ -2,7 +2,7 @@
 #
 # Each fact has a statement, the date it was last verified, a source, and
 # `forbidden` regex patterns: prose that contradicts the fact. A spec containing
-# any forbidden pattern fails `build_plan` (lint_stale_fact). When a fact changes,
+# any forbidden pattern fails `trinity build-plan` (lint_stale_fact). When a fact changes,
 # update it here once -- every plan is then re-checked against it.
 schema_version: 1
 facts:

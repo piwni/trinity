@@ -7,8 +7,13 @@
     trinity context     build the bounded context digest the agent reads (+persist)
     trinity fitatu-import  ingest Fitatu nutrition exports -> raw store
     trinity nutrition   build the bounded nutrition digest (fueling+recovery) (+persist)
+    trinity health      build the bounded health digest (labs+wellness) (+persist)
     trinity validate    run the deterministic guardrails against a plan JSON
     trinity push        validate then push a plan to intervals.icu (gated)
+    trinity build-plan     lint a season spec, then build its plan JSON
+    trinity build-report   build the HTML season report for a spec
+    trinity build-horizon  build the short "this week to year end" view
+    trinity render-pdf     render a markdown note or HTML report to PDF
 """
 
 from __future__ import annotations
@@ -20,6 +25,7 @@ from pathlib import Path
 import pandas as pd
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from trinity import knowledge
@@ -41,15 +47,21 @@ from trinity.connectors.fooddata import FoodDataClient
 from trinity.connectors.intervals import IntervalsClient
 from trinity.models.plan import PlanInputs, TrainingPlan
 from trinity.models.profile import AthleteProfile
-from trinity.planning.validator import validate_plan
+from trinity.planning.gate import validate_with_profile
 from trinity.planning.workout_builder import garmin_sync_warnings, plan_to_events
 from trinity.storage.io import load_json, save_json
 from trinity.storage.paths import (
     active_plan_path,
+    aero_path,
     calendar_path,
     context_path,
+    durability_path,
+    health_digest_path,
+    health_records_path,
+    nutrition_digest_path,
     plan_path,
     profile_path,
+    readiness_path,
 )
 
 app = typer.Typer(add_completion=False, help="Triathlete analysis + AI training planning.")
@@ -125,7 +137,7 @@ def readiness(
     for r in rep.results:
         c = {"green": "green", "amber": "yellow", "red": "red"}[r.flag.value]
         console.print(f"  [{c}]{r.flag.value:5}[/] {r.rule}: {r.message}")
-    out = get_config().context_dir / "readiness-athlete.json"
+    out = readiness_path()
     save_json(out, rep.model_dump(mode="json"))
     console.print(f"[dim]saved {out}[/]")
 
@@ -175,7 +187,7 @@ def context(athlete: str = typer.Option("athlete", help="Athlete id.")):
         console.print("[yellow]No profile yet. Run `trinity profile` first.[/]")
         raise typer.Exit(1)
     prof = AthleteProfile.model_validate(prof_data)
-    rep_data = load_json(get_config().context_dir / "readiness-athlete.json")
+    rep_data = load_json(readiness_path())
     rep = None
     if rep_data:
         from trinity.models.readiness import ReadinessReport
@@ -256,7 +268,7 @@ def durability(
             "moving_s": res.moving_s, "stopped_s": res.stopped_s,
             "fuel_failure_signature": res.looks_like_fuel_failure,
         }
-    path = cfg.data_dir / f"durability-{athlete}.json"
+    path = durability_path(athlete)
     save_json(path, {"generated_at": _dt.datetime.now(_dt.UTC).isoformat(),
                      "window": [start.isoformat(), end.isoformat()],
                      "activities": out})
@@ -337,7 +349,7 @@ def aero(
                      "cda_energy_flat": energy, "cda_energy_no_height_corr": naive,
                      "cda_effective_timed": timed})
     phys = DEFAULT_PHYSICS
-    path = get_config().data_dir / f"aero-{athlete}.json"
+    path = aero_path(athlete)
     save_json(path, {"generated_at": _dt.datetime.now(_dt.UTC).isoformat(),
                      "physics": phys.__dict__, "fits": rows})
     console.print(f"[green]Wrote aero fits[/] {path}")
@@ -528,7 +540,7 @@ def nutrition(athlete: str = typer.Option("athlete", help="Athlete id.")):
     if prof_data:
         prof = AthleteProfile.model_validate(prof_data)
     digest = nutrition_mod.build_digest(nut, acts, well, profile=prof, athlete_id=athlete)
-    out = get_config().context_dir / f"nutrition-{athlete}.json"
+    out = nutrition_digest_path(athlete)
     save_json(out, digest.model_dump(mode="json"))
 
     ea = digest.energy_availability_kcal_per_kg
@@ -566,10 +578,71 @@ def nutrition(athlete: str = typer.Option("athlete", help="Athlete id.")):
 
 
 @app.command()
+def health(athlete: str = typer.Option("athlete", help="Athlete id.")):
+    """Build the bounded health digest (lab results + wellness) and persist it.
+
+    Lab panels are read from health/records.yaml in the data dir. Each latest
+    result is compared with the range on the lab report and, for a few markers,
+    a cited screening threshold. Not medical advice.
+    """
+    from trinity.analysis import health as health_mod
+    from trinity.models.nutrition_digest import NutritionDigest
+    from trinity.models.readiness import ReadinessReport
+
+    records_file = health_records_path()
+    try:
+        records = health_mod.load_records(records_file)
+    except health_mod.HealthRecordsError as exc:
+        console.print(str(exc), style="red", markup=False)
+        raise typer.Exit(2) from exc
+    acts, well = _load_frames()
+    prof_data = load_json(profile_path(athlete))
+    rep_data = load_json(readiness_path(athlete))
+    nut_data = load_json(nutrition_digest_path(athlete))
+    digest = health_mod.build_digest(
+        records, acts, well,
+        profile=AthleteProfile.model_validate(prof_data) if prof_data else None,
+        readiness=ReadinessReport.model_validate(rep_data) if rep_data else None,
+        nutrition=NutritionDigest.model_validate(nut_data) if nut_data else None,
+        athlete_id=athlete)
+    out = health_digest_path(athlete)
+    save_json(out, digest.model_dump(mode="json"))
+
+    colors = {"green": "green", "amber": "yellow", "red": "red", "unknown": "dim"}
+    if not records_file.exists():
+        console.print(f"[yellow]No lab results yet.[/] Enter them in {records_file} "
+                      "(format: data/fixtures/health.sample.yaml).")
+    else:
+        flag = digest.overall_flag.value
+        console.print(f"Labs: [bold {colors[flag]}]{flag.upper()}[/] across {len(digest.labs)} "
+                      f"marker(s) from {len(records.labs)} panel(s)")
+        table = Table("marker", "value", "date", "lab range", "flag")
+        for m in digest.labs:
+            rng = ("-" if m.lab_ref_low is None and m.lab_ref_high is None else
+                   f"{'' if m.lab_ref_low is None else f'{m.lab_ref_low:g}'}-"
+                   f"{'' if m.lab_ref_high is None else f'{m.lab_ref_high:g}'}")
+            table.add_row(escape(m.name), escape(f"{m.value:g} {m.unit}"),
+                          f"{m.date}{' (stale)' if m.stale else ''}", rng,
+                          f"[{colors[m.flag.value]}]{m.flag.value}[/]")
+        console.print(table)
+        for line in digest.attention:
+            console.print(f"  {line}", markup=False, highlight=False)
+    if digest.hrv_baseline_60d_ms.value is not None:
+        console.print(f"  HRV {digest.hrv_rmssd_ms.value} ms (60d baseline "
+                      f"{digest.hrv_baseline_60d_ms.value}) | resting HR "
+                      f"{digest.resting_hr_bpm.value} bpm (baseline "
+                      f"{digest.resting_hr_baseline_bpm.value}) | sleep "
+                      f"{digest.sleep_avg_hours.value} h")
+    for line in digest.missing:
+        console.print(f"  [dim]missing: {line}[/]", highlight=False)
+    console.print(f"[dim]saved {out} | sha256={digest.sha256()[:16]}[/]")
+
+
+@app.command()
 def validate(plan_file: Path = typer.Argument(..., help="Path to a plan JSON.")):
     """Run the deterministic guardrails. Exits non-zero on errors."""
     plan = TrainingPlan.model_validate(load_json(plan_file))
-    rep = _validate_with_profile(plan)
+    rep = validate_with_profile(plan)
     _print_validation(rep)
     raise typer.Exit(0 if rep.ok else 1)
 
@@ -590,7 +663,7 @@ def push(
     # Stamp provenance inputs.
     plan.inputs = _stamp_inputs(plan)
 
-    rep = _validate_with_profile(plan)
+    rep = validate_with_profile(plan)
     _print_validation(rep)
     if not rep.ok:
         console.print("[red]Push blocked: fix validation errors first.[/]")
@@ -616,23 +689,98 @@ def push(
     console.print(f"[green]Pushed[/] {len(events)} events to intervals.icu: {result}")
 
 
+# --- season specs and reports ----------------------------------------------
+# These print with typer.echo, not rich: the output is plain tables and paths,
+# and rich would re-wrap long lines and read square brackets as markup.
+def _spec_file(spec: Path) -> Path:
+    if not spec.is_file():
+        typer.echo(f"No such spec: {spec}", err=True)
+        raise typer.Exit(2)
+    return spec
+
+
+def _date_option(value: str | None, flag: str) -> dt.date | None:
+    if value is None:
+        return None
+    try:
+        return dt.date.fromisoformat(value)
+    except ValueError as exc:
+        typer.echo(f"Invalid {flag} date '{value}': {exc}. Use YYYY-MM-DD.", err=True)
+        raise typer.Exit(2) from exc
+
+
+@app.command(name="build-plan")
+def build_plan(spec: Path = typer.Argument(..., help="Season spec (YAML).")):
+    """Lint a season spec, then build its TrainingPlan JSON into the plans dir.
+
+    The lint checks the spec's prose against its own numbers and the dated facts
+    in the triathlon rulebook's facts.yaml. Any lint error stops the build.
+    """
+    from trinity.planning.season import build_plan_from_file, week_table
+
+    plan, issues = build_plan_from_file(_spec_file(spec))
+    for i in issues:
+        typer.echo(f"  {i.severity.value:<7} {i.code}: {i.message}")
+    if plan is None:
+        errors = sum(i.severity.value == "error" for i in issues)
+        typer.echo(f"spec lint failed: {errors} error(s)", err=True)
+        raise typer.Exit(1)
+    out = plan_path(plan.plan_id)
+    save_json(out, plan.model_dump(mode="json"))
+    typer.echo(f"Wrote {out}  (from {spec})")
+    for line in week_table(plan):
+        typer.echo(line)
+
+
+@app.command(name="build-report")
+def build_report(spec: Path = typer.Argument(..., help="Season spec (YAML).")):
+    """Build the HTML season report from a spec, its plan, the profile and history."""
+    from trinity.reports.season_report import build_report as _build_report
+
+    typer.echo(f"Wrote {_build_report(_spec_file(spec))}")
+
+
+@app.command(name="build-horizon")
+def build_horizon(
+    spec: Path = typer.Argument(..., help="Season spec (YAML)."),
+    start: str = typer.Option(None, help="First day to show (YYYY-MM-DD). Default: this week's Monday."),
+    end: str = typer.Option(None, help="Last day to show (YYYY-MM-DD). Default: 31 Dec of the start year."),
+    label: str = typer.Option(None, help="Heading for the page. Default: the plan id."),
+    note: str = typer.Option("", help="A sentence appended to the method note."),
+):
+    """Build the short view of a plan: every week with a day between --start and --end."""
+    from trinity.reports.horizon import build_horizon as _build_horizon
+
+    try:
+        out, weeks, run_km = _build_horizon(
+            _spec_file(spec), start=_date_option(start, "--start"),
+            end=_date_option(end, "--end"), label=label, note=note)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Wrote {out} ({weeks} weeks, {run_km:.0f} km run)")
+
+
+@app.command(name="render-pdf")
+def render_pdf(
+    source: Path = typer.Argument(..., help="A markdown note (.md) or an HTML report (.html)."),
+    pdf: Path = typer.Argument(None, help="Defaults to the source path with a .pdf suffix."),
+):
+    """Render a markdown note or an HTML report to a print-ready PDF (needs Chrome)."""
+    from trinity.reports.pdf import ChromeNotFoundError, render
+
+    if not source.is_file():
+        typer.echo(f"No such file: {source}", err=True)
+        raise typer.Exit(2)
+    try:
+        out = render(source, pdf)
+    except ChromeNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"{out}  ({out.stat().st_size / 1024:.0f} KB)")
+
+
 # --- helpers ---------------------------------------------------------------
-def _validate_with_profile(plan: TrainingPlan):
-    prof_data = load_json(profile_path(plan.athlete_id))
-    tolerance = starting_ctl = None
-    training_age = "intermediate"
-    if prof_data:
-        prof = AthleteProfile.model_validate(prof_data)
-        tolerance = prof.weekly_volume_tolerance_hours
-        training_age = prof.training_age.value
-        if prof.load.combined.ctl.known:
-            starting_ctl = prof.load.combined.ctl.value
-    if plan.starting_ctl is not None:
-        starting_ctl = plan.starting_ctl
-    return validate_plan(plan, starting_ctl=starting_ctl,
-                         weekly_hours_tolerance=tolerance, training_age=training_age)
-
-
 def _stamp_inputs(plan: TrainingPlan) -> PlanInputs:
     digest_data = load_json(context_path(plan.athlete_id))
     sha = None

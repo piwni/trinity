@@ -1,4 +1,4 @@
-"""Generate the developer-style training-plan report (HTML -> PDF via Chrome).
+"""Generate the developer-style training-plan report (HTML).
 
 Generic: all athlete/season-specific copy (titles, goals, race targets, split
 tables, rationale) is read from the season spec (examples/season-2026-malbork.yaml);
@@ -6,10 +6,10 @@ all metrics are computed from the persisted profile, plan and activity history i
 the configured data dir (TRINITY_DATA_DIR). Nothing personal is hardcoded here.
 
 Run:
-  uv run python scripts/build_report.py [SPEC.yaml]
-  TRINITY_DATA_DIR=examples/data uv run python scripts/build_report.py examples/season-2026-malbork.yaml
+  trinity build-report SPEC.yaml
+  TRINITY_DATA_DIR=examples/data trinity build-report examples/season-2026-malbork.yaml
 
-Then convert with headless Chrome (see README).
+Then: trinity render-pdf <reports_dir>/<plan_id>.html
 """
 
 from __future__ import annotations
@@ -17,20 +17,15 @@ from __future__ import annotations
 import datetime as dt
 import html
 import json
-import sys
 from pathlib import Path
 
 import pandas as pd
 import yaml
 
 from trinity.analysis.loaders import load_activities, load_wellness
-from trinity.config import get_config
 from trinity.models.plan import TrainingPlan
-from trinity.storage.paths import plan_path, profile_path
-
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SPEC = ROOT / "examples" / "season-2026-malbork.yaml"
-
+from trinity.planning.gate import validate_with_profile
+from trinity.storage.paths import plan_path, profile_path, reports_dir
 
 # ---------- formatting helpers ----------
 # 16px pictograms. Colour is set on the wrapper so the PDF stays readable in grey too.
@@ -135,12 +130,16 @@ BUCKET_M = {  # (swim, bike, run) meters per IM fraction
 }
 
 
-def main() -> None:
-    spec_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_SPEC
-    spec = yaml.safe_load(spec_path.read_text())
+def build_report(spec_path: Path, out_html: Path | None = None) -> Path:
+    """Write the season report for ``spec_path`` and return where it went.
+
+    Reads the spec's plan and the athlete's profile and history from the data
+    dir; defaults to ``<data_dir>/reports/<plan_id>.html``.
+    """
+    spec = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
     meta = spec["meta"]
     athlete = meta["athlete_id"]
-    out_html = get_config().data_dir / "reports" / f"{meta['plan_id']}.html"
+    out_html = out_html or reports_dir() / f"{meta['plan_id']}.html"
 
     prof = json.loads(profile_path(athlete).read_text())
     plan = json.loads(plan_path(meta["plan_id"]).read_text())
@@ -489,9 +488,7 @@ def main() -> None:
     if meta.get("rationale"):
         A(f"<p>{esc(meta['rationale'])}</p>")
     # 8. Guardrail -- computed from the validator, never hardcoded.
-    from trinity.cli import _validate_with_profile
-
-    report = _validate_with_profile(TrainingPlan.model_validate(plan))
+    report = validate_with_profile(TrainingPlan.model_validate(plan))
     status = ("<b class='good'>PASS</b>" if report.ok else "<b class='bad'>FAIL</b>")
     A("<h2 class='pb'>8 &middot; Guardrail report</h2>")
     A(f"<p>Deterministic validator (<span class='mono'>trinity validate</span>), run at report "
@@ -544,7 +541,7 @@ def main() -> None:
     A("</body></html>")
     out_html.parent.mkdir(parents=True, exist_ok=True)
     out_html.write_text("\n".join(parts), encoding="utf-8")
-    print(f"Wrote {out_html}")
+    return out_html
 
 
 CSS = """
@@ -595,7 +592,3 @@ h2, h3 { break-after: avoid; } table, .note, .card { break-inside: avoid; }
 .legend .ico { margin-left: 10px; }
 .legend .ico:first-child { margin-left: 0; }
 """
-
-
-if __name__ == "__main__":
-    main()

@@ -1,23 +1,13 @@
 # Athlete data is private health data — never commit it.
 # (The committed, consented sample lives under examples/data/ instead.)
-/data/raw/*
-/data/profiles/*
-/data/plans/*
-/data/context/*
-/data/reports/*
-# Any file at the data root: command output (aero-*, durability-*, calendar-*)
-# and your own season specs.
-/data/*.*
-/data/calendar-*.json
-/data/manual_metrics.json
-/data/manual_races.json
-/data/manual_corrections.json
-# Both name every product the athlete eats — a food diary by another route.
-/data/food_mappings.json
-/data/food_concepts.json
+# Everything under data/ is ignored by default, so a new folder (labs, a new
+# connector's cache, your own season specs) is private without anyone
+# remembering to list it here. Only fixtures and .gitkeep files are tracked.
+/data/**
+!/data/**/
 !/data/**/.gitkeep
-
-# Keep curated, non-personal fixtures (synthetic athlete) but ignore real cassettes.
+!/data/fixtures/**
+# Real recordings stay out even though they sit under fixtures/.
 /data/fixtures/private/
 
 # Python

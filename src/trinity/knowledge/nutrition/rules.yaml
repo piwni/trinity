@@ -3,7 +3,7 @@
 # `analysis/nutrition.py` loads this to turn daily Fitatu totals + training load
 # into provenance-tagged adequacy flags. Like the training/readiness rulebooks,
 # every threshold is a concrete number so the math stays deterministic and the
-# agent (nutritionist skill) only does judgment on top of the computed digest.
+# agent (nutrition-review skill) only does judgment on top of the computed digest.
 #
 # Numbers are conservative, endurance-athlete-aware defaults with sources cited.
 # Sex/age-specific values: where the athlete's sex is unknown we apply the male

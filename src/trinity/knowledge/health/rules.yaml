@@ -1,0 +1,227 @@
+# Trinity health rulebook — PARAMETERIZED.
+#
+# `analysis/health.py` loads this to turn hand-entered lab panels into flags for
+# the doctor agent. Like the training and nutrition rulebooks, every threshold is
+# a concrete number so the comparison stays deterministic and the agent only does
+# judgment on top of the computed digest.
+#
+# How a result is flagged
+#   1. Against the reference range printed on the lab report (ref_low/ref_high).
+#      Outside it = AMBER. Python does not grade how far outside: that is the
+#      doctor's judgment, and in the end a physician's.
+#   2. Against a screening threshold below, for the few markers where an athlete
+#      can sit inside the lab's range and still be short. These are deliberately
+#      few and each one cites its source.
+#   The worse of the two wins. No range and no threshold = UNKNOWN, never GREEN.
+#
+# Units
+#   `unit` is the unit the thresholds are written in. `units` lists every unit
+#   accepted for the marker and the factor that converts it to `unit`. A result
+#   in any other unit keeps its lab-range flag; the threshold is skipped and the
+#   digest says so. Unit spellings are matched case-insensitively, with µ/μ/mc
+#   read as "u".
+#
+# Not medical advice. See DISCLAIMER.md.
+schema_version: 1
+
+labs:
+  # Older results are still reported, but marked stale: history, not status.
+  stale_after_days: 365
+  # Training in the days before a blood draw moves several markers (CK, AST,
+  # ferritin, CRP), so the digest reports the load in this window per panel.
+  prior_training_window_days: 3
+
+markers:
+  # --- iron -----------------------------------------------------------------
+  ferritin:
+    name: Ferritin
+    category: iron
+    aliases: [serum ferritin, ferrytyna]
+    unit: ug/L
+    units: { ug/L: 1.0, ng/mL: 1.0 }
+    # Staging used for athletes: <35 ug/L iron deficiency (stage 1), <20 ug/L
+    # iron-deficient non-anaemia (stage 2, with transferrin saturation <16%).
+    low: { amber_below: 35, red_below: 20 }
+    source: >-
+      Sim et al. 2019, Iron considerations for the athlete: a narrative review,
+      Eur J Appl Physiol 119:1463-1478 (staging after Peeling et al. 2014,
+      PLoS One 9:e93002)
+  transferrin_saturation:
+    name: Transferrin saturation
+    category: iron
+    aliases: [tsat, transferrin sat, wysycenie transferyny, saturacja transferyny]
+    unit: "%"
+    units: { "%": 1.0 }
+    low: { amber_below: 16 }
+    source: >-
+      Sim et al. 2019, Eur J Appl Physiol 119:1463-1478
+  iron:
+    name: Serum iron
+    category: iron
+    aliases: [fe, zelazo, żelazo]
+  transferrin:
+    name: Transferrin
+    category: iron
+    aliases: [transferyna]
+  tibc:
+    name: Total iron-binding capacity
+    category: iron
+    aliases: [total iron binding capacity]
+
+  # --- blood count ------------------------------------------------------------
+  haemoglobin:
+    name: Haemoglobin
+    category: blood count
+    aliases: [hemoglobin, hgb, hb, hemoglobina]
+    unit: g/L
+    units: { g/L: 1.0, g/dL: 10.0 }
+    # Anaemia thresholds for adults at sea level. Sex-specific: with the
+    # athlete's sex unknown the threshold is not applied.
+    low: { red_below: { male: 130, female: 120 } }
+    source: >-
+      WHO 2011, Haemoglobin concentrations for the diagnosis of anaemia and
+      assessment of severity (WHO/NMH/NHD/MNM/11.1)
+  haematocrit:
+    name: Haematocrit
+    category: blood count
+    aliases: [hematocrit, hct, hematokryt]
+  rbc:
+    name: Red blood cells
+    category: blood count
+    aliases: [erythrocytes, erytrocyty, red blood cell count]
+  mcv:
+    name: Mean corpuscular volume
+    category: blood count
+    aliases: [mean cell volume]
+  wbc:
+    name: White blood cells
+    category: blood count
+    aliases: [leukocytes, leukocyty, white blood cell count]
+  platelets:
+    name: Platelets
+    category: blood count
+    aliases: [plt, plytki krwi, płytki krwi, thrombocytes]
+
+  # --- vitamins and minerals --------------------------------------------------
+  vitamin_d_25oh:
+    name: 25-hydroxyvitamin D
+    category: vitamins
+    aliases: [vitamin d, 25-oh vitamin d, 25(oh)d, "25-oh d", witamina d, witamina d3 25(oh),
+              "witamina d 25(oh)"]
+    unit: nmol/L
+    units: { nmol/L: 1.0, ng/mL: 2.496 }
+    # <30 nmol/L risk of deficiency, 30-50 nmol/L risk of inadequacy. Higher
+    # "athlete" targets are debated and are not encoded here.
+    low: { amber_below: 50, red_below: 30 }
+    source: >-
+      Institute of Medicine 2011, Dietary Reference Intakes for Calcium and
+      Vitamin D; Owens, Allison & Close 2018, Vitamin D and the Athlete, Sports
+      Med 48(Suppl 1):3-16
+  vitamin_b12:
+    name: Vitamin B12
+    category: vitamins
+    aliases: [b12, cobalamin, witamina b12]
+  folate:
+    name: Folate
+    category: vitamins
+    aliases: [folic acid, kwas foliowy]
+  magnesium:
+    name: Magnesium
+    category: minerals
+    aliases: [mg, magnez]
+  sodium:
+    name: Sodium
+    category: minerals
+    aliases: [na, sod, sód]
+  potassium:
+    name: Potassium
+    category: minerals
+    aliases: [k, potas]
+  calcium:
+    name: Calcium
+    category: minerals
+    aliases: [ca, wapn, wapń]
+
+  # --- inflammation and muscle ------------------------------------------------
+  crp:
+    name: C-reactive protein
+    category: inflammation
+    aliases: [c-reactive protein, hs-crp, hscrp, bialko c-reaktywne, białko c-reaktywne]
+  ck:
+    name: Creatine kinase
+    category: muscle
+    aliases: [creatine kinase, cpk, kinaza kreatynowa]
+
+  # --- liver and kidney -------------------------------------------------------
+  alt:
+    name: Alanine aminotransferase
+    category: liver
+    aliases: [alat, sgpt, alanine aminotransferase]
+  ast:
+    name: Aspartate aminotransferase
+    category: liver
+    aliases: [aspat, sgot, aspartate aminotransferase]
+  ggt:
+    name: Gamma-glutamyl transferase
+    category: liver
+    aliases: [ggtp, gamma gt]
+  creatinine:
+    name: Creatinine
+    category: kidney
+    aliases: [kreatynina]
+  egfr:
+    name: Estimated GFR
+    category: kidney
+    aliases: [gfr]
+  urea:
+    name: Urea
+    category: kidney
+    aliases: [bun, mocznik]
+
+  # --- hormones ---------------------------------------------------------------
+  tsh:
+    name: Thyroid-stimulating hormone
+    category: thyroid
+    aliases: [thyrotropin]
+  ft4:
+    name: Free T4
+    category: thyroid
+    aliases: [free t4, free thyroxine]
+  ft3:
+    name: Free T3
+    category: thyroid
+    aliases: [free t3, free triiodothyronine]
+  testosterone:
+    name: Testosterone (total)
+    category: hormones
+    aliases: [total testosterone, testosteron]
+  cortisol:
+    name: Cortisol
+    category: hormones
+    aliases: [kortyzol]
+
+  # --- metabolic --------------------------------------------------------------
+  glucose:
+    name: Fasting glucose
+    category: metabolic
+    aliases: [fasting glucose, glukoza]
+  hba1c:
+    name: HbA1c
+    category: metabolic
+    aliases: [glycated haemoglobin, glycated hemoglobin, hemoglobina glikowana]
+  total_cholesterol:
+    name: Total cholesterol
+    category: lipids
+    aliases: [cholesterol, cholesterol calkowity, cholesterol całkowity]
+  ldl:
+    name: LDL cholesterol
+    category: lipids
+    aliases: [ldl cholesterol, ldl-c, cholesterol ldl]
+  hdl:
+    name: HDL cholesterol
+    category: lipids
+    aliases: [hdl cholesterol, hdl-c, cholesterol hdl]
+  triglycerides:
+    name: Triglycerides
+    category: lipids
+    aliases: [tg, trojglicerydy, trójglicerydy]

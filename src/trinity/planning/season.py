@@ -6,16 +6,16 @@ Each week is either generated from the swim-heavy build microcycle or listed
 explicitly (fixed / taper / recovery / race weeks).
 
 Run:
-  uv run python scripts/build_plan.py [SPEC.yaml]
-  TRINITY_DATA_DIR=examples/data uv run python scripts/build_plan.py examples/season-2026-malbork.yaml
+  trinity build-plan SPEC.yaml
+  TRINITY_DATA_DIR=examples/data trinity build-plan examples/season-2026-malbork.yaml
 
-Then: uv run trinity validate <plans_dir>/<plan_id>.json
+Then: trinity validate <plans_dir>/<plan_id>.json
 """
 
 from __future__ import annotations
 
 import datetime as dt
-import sys
+import re
 from pathlib import Path
 
 import yaml
@@ -33,11 +33,8 @@ from trinity.models.plan import (
 from trinity.models.profile import DistanceBucket
 from trinity.planning.prescription import RATE, content_tss, derive_intensity
 from trinity.planning.spec_lint import lint_spec
+from trinity.planning.validator import Issue
 from trinity.planning.workout_builder import EXTERNAL_ID_PREFIX
-from trinity.storage.io import save_json
-from trinity.storage.paths import plan_path
-
-DEFAULT_SPEC = Path(__file__).resolve().parents[1] / "examples" / "season-2026-malbork.yaml"
 
 INTENSITY = {"easy": IntensityClass.EASY, "moderate": IntensityClass.MODERATE,
              "hard": IntensityClass.HARD}
@@ -76,9 +73,7 @@ def race_tss_from_card(card: dict, anchors: dict, session_minutes: float) -> flo
     card has one (the load actually expected), else the target. Swim at ~65 TSS/h (race-effort sTSS),
     bike at IF = card watts / FTP, run at IF = threshold / split pace; any session
     time beyond the legs (warm-up) at the easy run rate."""
-    import re
-
-    ftp = float(card.get("ftp_w") or anchors.get("ftp_w") or 0)
+    ftp =float(card.get("ftp_w") or anchors.get("ftp_w") or 0)
     thr = float(anchors.get("run_threshold_s_per_km") or 0)
     legs = card.get("splits") or []
     tss = 0.0
@@ -350,27 +345,27 @@ def build_plan(spec: dict) -> TrainingPlan:
     return plan
 
 
-def main() -> None:
-    spec_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_SPEC
-    raw = spec_path.read_text()
+def build_plan_from_file(spec_path: Path) -> tuple[TrainingPlan | None, list[Issue]]:
+    """Lint a spec file's text, then build its plan.
+
+    Returns ``(plan, issues)``. The plan is ``None`` when the lint found errors:
+    a spec whose prose disagrees with its numbers must not produce a plan.
+    """
+    raw = spec_path.read_text(encoding="utf-8")
     spec = yaml.safe_load(raw)
     issues = lint_spec(spec, raw)
-    for i in issues:
-        print(f"  {i.severity.value:<7} {i.code}: {i.message}")
     if any(i.severity.value == "error" for i in issues):
-        sys.exit(f"spec lint failed: {sum(i.severity.value == 'error' for i in issues)} error(s)")
-    plan = build_plan(spec)
-    out = plan_path(plan.plan_id)
-    save_json(out, plan.model_dump(mode="json"))
+        return None, issues
+    return build_plan(spec), issues
 
-    print(f"Wrote {out}  (from {spec_path})")
-    print(f"{'wk':>2} {'start':>10} {'phase':>10} {'rec':>3} {'h':>5} {'TSS':>6}  swim/bike/run")
+
+def week_table(plan: TrainingPlan) -> list[str]:
+    """One line per week (hours, TSS, sessions per sport), for the CLI to print."""
+    lines = [f"{'wk':>2} {'start':>10} {'phase':>10} {'rec':>3} {'h':>5} {'TSS':>6}  swim/bike/run"]
     for w in plan.weeks:
         cnt = {sp.value: c for sp, c in w.sessions_by_sport().items()}
-        print(f"{w.week_index:>2} {w.start_date.isoformat():>10} {w.phase.value:>10} "
-              f"{'Y' if w.is_recovery else '-':>3} {w.planned_hours:>5.1f} {w.planned_tss:>6.0f}  "
-              f"{cnt.get('swim', 0)}/{cnt.get('bike', 0)}/{cnt.get('run', 0)}")
-
-
-if __name__ == "__main__":
-    main()
+        lines.append(
+            f"{w.week_index:>2} {w.start_date.isoformat():>10} {w.phase.value:>10} "
+            f"{'Y' if w.is_recovery else '-':>3} {w.planned_hours:>5.1f} {w.planned_tss:>6.0f}  "
+            f"{cnt.get('swim', 0)}/{cnt.get('bike', 0)}/{cnt.get('run', 0)}")
+    return lines

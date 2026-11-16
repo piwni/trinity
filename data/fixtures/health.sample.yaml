@@ -1,0 +1,52 @@
+# Health records: lab panels (bloodwork) and anything else about your health
+# you want the doctor agent to know.
+#
+# To use it, copy this file to data/health/records.yaml (git-ignored), replace
+# the invented numbers below with your own, then run `trinity health`.
+#
+# The values here are FABRICATED for the synthetic athlete. They are not anyone's
+# results and not medical data.
+
+labs:
+  # One entry per blood draw. Copy each line as the lab printed it.
+  - date: 2026-06-10
+    lab: Example Lab
+    fasting: true
+    # Anything about the day that changes how the numbers read.
+    context: "Morning draw, rest day the day before, no illness."
+    source: "2026-06-10-example-lab.pdf"
+    results:
+      # marker: the name on the report. Common names and abbreviations are
+      #         recognised (see the rulebook's aliases); anything else is kept
+      #         as you wrote it and judged against the lab's range only.
+      # value:  a number. For "<5", enter 5 and say so in `note`.
+      # unit:   as printed.
+      # ref_low / ref_high: the reference range printed next to the result, in
+      #         the same unit. Leave out a side the report does not give.
+      - { marker: Ferritin, value: 28, unit: ng/mL, ref_low: 22, ref_high: 322 }
+      - { marker: Transferrin saturation, value: 24, unit: "%", ref_low: 16, ref_high: 45 }
+      - { marker: Haemoglobin, value: 14.6, unit: g/dL, ref_low: 13.5, ref_high: 17.5 }
+      - { marker: Haematocrit, value: 43, unit: "%", ref_low: 40, ref_high: 52 }
+      - { marker: 25-OH vitamin D, value: 31, unit: ng/mL, ref_low: 30, ref_high: 100 }
+      - { marker: Vitamin B12, value: 410, unit: pg/mL, ref_low: 197, ref_high: 771 }
+      - { marker: CRP, value: 0.6, unit: mg/L, ref_high: 5 }
+      - { marker: CK, value: 310, unit: U/L, ref_high: 190, note: "long ride two days earlier" }
+      - { marker: TSH, value: 1.9, unit: mIU/L, ref_low: 0.27, ref_high: 4.2 }
+      - { marker: Testosterone, value: 16.2, unit: nmol/L, ref_low: 8.6, ref_high: 29 }
+      - { marker: Fasting glucose, value: 88, unit: mg/dL, ref_low: 70, ref_high: 99 }
+
+  - date: 2025-11-18
+    lab: Example Lab
+    fasting: true
+    context: "Off-season check."
+    results:
+      - { marker: Ferritin, value: 61, unit: ng/mL, ref_low: 22, ref_high: 322 }
+      - { marker: Haemoglobin, value: 15.1, unit: g/dL, ref_low: 13.5, ref_high: 17.5 }
+      - { marker: 25-OH vitamin D, value: 19, unit: ng/mL, ref_low: 30, ref_high: 100 }
+
+# Other health data, in your own words. `kind` is free text; these are common:
+# illness, injury, medication, supplement, measurement, note.
+events:
+  - { date: 2026-05-02, kind: illness, note: "Head cold, four days off training." }
+  - { date: 2026-01-10, kind: supplement, note: "Vitamin D 2000 IU daily since the November result." }
+  - { date: 2025-09-14, kind: injury, note: "Left Achilles soreness after the race; settled in two weeks." }
