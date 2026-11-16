@@ -6,8 +6,8 @@ import datetime as dt
 
 import pandas as pd
 
-from aithlete.analysis.races import detect_triathlon_results
-from aithlete.models.profile import DistanceBucket
+from trinity.analysis.races import detect_triathlon_results
+from trinity.models.profile import DistanceBucket
 
 
 def _act(date, start, sport, dist_m, elapsed_s, name=None):
@@ -100,7 +100,7 @@ def test_monolithic_workout_half():
 
 
 def test_merge_manual_races_adds_event_name():
-    from aithlete.analysis.races import merge_manual_races
+    from trinity.analysis.races import merge_manual_races
 
     auto = detect_triathlon_results(pd.DataFrame([
         _act("2023-08-06", "08:00:00", "bike", 88273, 10399, "Outdoor Cycling"),

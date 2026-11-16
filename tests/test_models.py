@@ -7,8 +7,8 @@ import datetime as dt
 import pytest
 from pydantic import ValidationError
 
-from aithlete.models.common import Provenance, Tracked, estimate_only
-from aithlete.models.profile import AthleteProfile, DistanceBucket, RaceResult
+from trinity.models.common import Provenance, Tracked, estimate_only
+from trinity.models.profile import AthleteProfile, DistanceBucket, RaceResult
 
 
 def test_tracked_invariant_value_requires_provenance():

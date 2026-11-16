@@ -5,6 +5,9 @@
 /data/plans/*
 /data/context/*
 /data/reports/*
+# Any file at the data root: command output (aero-*, durability-*, calendar-*)
+# and your own season specs.
+/data/*.*
 /data/calendar-*.json
 /data/manual_metrics.json
 /data/manual_races.json

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import datetime as dt
 
-from aithlete.models.common import Sport
-from aithlete.models.plan import (
+from trinity.models.common import Sport
+from trinity.models.plan import (
     DistanceBucket,
     GoalRace,
     IntensityClass,
@@ -17,7 +17,7 @@ from aithlete.models.plan import (
     TrainingPlan,
     WorkoutStep,
 )
-from aithlete.models.plan import StepKind as SK
+from trinity.models.plan import StepKind as SK
 
 
 def session(d, sport, name, tss, minutes, iclass, brick=False, structure=None):

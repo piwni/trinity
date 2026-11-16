@@ -3,11 +3,11 @@
 Generic: all athlete/season-specific copy (titles, goals, race targets, split
 tables, rationale) is read from the season spec (examples/season-2026-malbork.yaml);
 all metrics are computed from the persisted profile, plan and activity history in
-the configured data dir (AITHLETE_DATA_DIR). Nothing personal is hardcoded here.
+the configured data dir (TRINITY_DATA_DIR). Nothing personal is hardcoded here.
 
 Run:
   uv run python scripts/build_report.py [SPEC.yaml]
-  AITHLETE_DATA_DIR=examples/data uv run python scripts/build_report.py examples/season-2026-malbork.yaml
+  TRINITY_DATA_DIR=examples/data uv run python scripts/build_report.py examples/season-2026-malbork.yaml
 
 Then convert with headless Chrome (see README).
 """
@@ -23,15 +23,62 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from aithlete.analysis.loaders import load_activities, load_wellness
-from aithlete.config import get_config
-from aithlete.storage.paths import plan_path, profile_path
+from trinity.analysis.loaders import load_activities, load_wellness
+from trinity.config import get_config
+from trinity.models.plan import TrainingPlan
+from trinity.storage.paths import plan_path, profile_path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SPEC = ROOT / "examples" / "season-2026-malbork.yaml"
 
 
 # ---------- formatting helpers ----------
+# 16px pictograms. Colour is set on the wrapper so the PDF stays readable in grey too.
+_ICONS = {
+    "swim": (
+        "<svg viewBox='0 0 16 16' aria-hidden='true'>"
+        "<circle cx='3.2' cy='6.2' r='1.15' fill='currentColor'/>"
+        "<path d='M4.4 7.2c1.6-.9 3.2-.5 4.6.6l2.2-1.5' fill='none' stroke='currentColor' "
+        "stroke-width='1.35' stroke-linecap='round' stroke-linejoin='round'/>"
+        "<path d='M1.4 11.2c1.2-.8 2.2-.8 3.2 0s2 .8 3.2 0 2-.8 3.2 0 2 .8 3.2 0' "
+        "fill='none' stroke='currentColor' stroke-width='1.15' stroke-linecap='round'/>"
+        "</svg>"
+    ),
+    "bike": (
+        "<svg viewBox='0 0 16 16' aria-hidden='true'>"
+        "<circle cx='4' cy='11.2' r='2.15' fill='none' stroke='currentColor' stroke-width='1.3'/>"
+        "<circle cx='12' cy='11.2' r='2.15' fill='none' stroke='currentColor' stroke-width='1.3'/>"
+        "<path d='M4 11.2 7.2 6.4h3.3L12 11.2M7.2 6.4 9.2 11.2M10.5 6.4 9.2 4.3H7.4' "
+        "fill='none' stroke='currentColor' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/>"
+        "</svg>"
+    ),
+    "run": (
+        "<svg viewBox='0 0 16 16' aria-hidden='true'>"
+        "<circle cx='9.2' cy='2.7' r='1.25' fill='currentColor'/>"
+        "<path d='M7.6 14.2 8.8 9.4 6.2 8.2M8.8 9.4l2.6-.8 1.6 2.6M8.8 9.4 10.6 6.2 7.8 5' "
+        "fill='none' stroke='currentColor' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/>"
+        "</svg>"
+    ),
+    "strength": (
+        "<svg viewBox='0 0 16 16' aria-hidden='true'>"
+        "<path d='M2.2 6.2h1.7v3.6H2.2zM12.1 6.2h1.7v3.6h-1.7zM3.9 7.3h8.2v1.4H3.9z' fill='currentColor'/>"
+        "<path d='M5.2 5.1v5.8M10.8 5.1v5.8' stroke='currentColor' stroke-width='1.35' stroke-linecap='round'/>"
+        "</svg>"
+    ),
+}
+
+
+def sport_icon(session: dict) -> str:
+    """A small pictogram for swim, bike, run, and strength. Empty for the rest."""
+    sport = session.get("sport") or ""
+    name = (session.get("name") or "").lower()
+    kind = "strength" if sport == "other" and "strength" in name else sport
+    svg = _ICONS.get(kind)
+    if not svg:
+        return ""
+    return f"<span class='ico i-{kind}'>{svg}</span>"
+
+
 def hms(seconds: float | None) -> str:
     if seconds is None:
         return "—"
@@ -41,11 +88,18 @@ def hms(seconds: float | None) -> str:
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
 
-def time_to_s(text: str) -> int:
-    parts = [int(p) for p in str(text).split(":")]
+def leg_s(text) -> int | None:
+    """A split-table leg: h:mm:ss or m:ss. None for a dash / no target."""
+    try:
+        parts = [int(p) for p in str(text).split(":")]
+    except ValueError:
+        return None
     while len(parts) < 3:
         parts.insert(0, 0)
     return parts[0] * 3600 + parts[1] * 60 + parts[2]
+
+
+PRIORITY = {"A": "A-race", "B": "B-race", "C": "C-race"}
 
 
 def pace_100(seconds: float, meters: float) -> str:
@@ -121,13 +175,31 @@ def main() -> None:
     def t_tag(ic):
         return f"<span class='tag t-{ic}'>{ic}</span>"
 
-    def split_table(splits, total_s):
+    def split_table(splits):
+        """Leg | Planning | Stretch | Detail. Totals are SUMMED from the legs, so a
+        card cannot print a total its own splits don't add up to."""
+        has_plan = any(sp.get("planning") for sp in splits)
+        head = ("<tr><th>Leg</th>" + ("<th class='r'>Planning</th>" if has_plan else "")
+                + "<th class='r'>" + ("Stretch" if has_plan else "Target") + "</th><th>Detail</th></tr>")
         body = ""
         for sp in splits:
-            body += (f"<tr><td>{esc(sp['leg'])}</td><td class='r mono'>{esc(sp['target'])}</td>"
+            plan_td = f"<td class='r mono'>{esc(sp.get('planning', '—'))}</td>" if has_plan else ""
+            body += (f"<tr><td>{esc(sp['leg'])}</td>{plan_td}"
+                     f"<td class='r mono'>{esc(sp['target'])}</td>"
                      f"<td class='small'>{esc(sp.get('detail', ''))}</td></tr>")
-        body += (f"<tr class='tot'><td>TOTAL</td><td class='r mono'>{hms(total_s)}</td><td></td></tr>")
-        return body
+
+        def total(col):
+            vals = [leg_s(sp.get(col)) for sp in splits]
+            return hms(sum(vals)) if vals and all(v is not None for v in vals) else "—"
+        plan_tot = f"<td class='r mono'>{total('planning')}</td>" if has_plan else ""
+        body += (f"<tr class='tot'><td>TOTAL</td>{plan_tot}<td class='r mono'>{total('target')}</td>"
+                 "<td></td></tr>")
+        return head + body
+
+    def race_line(r):
+        pt = r.get("planning_time")
+        return (f"planning {esc(pt)} &middot; stretch {esc(r['target_time'])}" if pt
+                else f"target {esc(r['target_time'])}")
 
     A(f"<!doctype html><html><head><meta charset='utf-8'><style>{CSS}</style></head><body>")
 
@@ -136,10 +208,13 @@ def main() -> None:
     targ_line = " &middot; ".join(
         f"{esc(r['name'])} ({dt.date.fromisoformat(str(r['date'])).strftime('%d %b %Y')})"
         for r in races)
-    goal_line = " &middot; ".join(f"{esc(r['target_time'])} {esc(r['bucket'])}" for r in races)
+    goal_line = " &middot; ".join(
+        f"{esc(r.get('planning_time') or r['target_time'])}"
+        + (f" ({esc(r['target_time'])})" if r.get("planning_time") else "") + f" {esc(r['bucket'])}"
+        for r in races)
     A("<div class='cover'>")
     A(f"<h1>{esc(meta.get('title', 'Season Plan & Analysis'))}</h1>")
-    A(f"<div class='sub'>{targ_line}<br>Targets: {goal_line}</div>")
+    A(f"<div class='sub'>{targ_line}<br>Planning (stretch): {goal_line}</div>")
     A(f"<div class='small' style='margin-top:10px'>Generated {dt.date.today().isoformat()} "
       f"from {n} activities ({start.date()} &rarr; {end.date()}). "
       f"Plan id <span class='mono'>{esc(meta['plan_id'])}</span>. "
@@ -163,16 +238,14 @@ def main() -> None:
     A("<h3>Goals (athlete-confirmed)</h3><ul>")
     for r in races:
         d = dt.date.fromisoformat(str(r['date'])).strftime('%a %d %b %Y')
-        pr = "A-race" if str(r.get('priority')).upper() == "A" else "B-race / tune-up"
+        pr = PRIORITY.get(str(r.get('priority')).upper(), str(r.get('priority')))
         A(f"<li><b>{esc(r['name'])}</b> &mdash; {esc(d)} &mdash; <b>{esc(pr)}</b>. "
-          f"Target <b>{esc(r['target_time'])}</b>, swim {esc(r.get('target_swim', '—'))}.</li>")
+          f"{race_line(r).capitalize()}.</li>")
     vc = meta.get("volume_ceiling_hours", {})
     if vc:
         A(f"<li>Volume ceiling: <b>{esc(vc.get('to_first_race'))} h/wk</b> to first race, "
           f"<b>{esc(vc.get('after_first_race'))} h/wk</b> after.</li>")
     A("</ul>")
-    if meta.get("equipment_note"):
-        A(f"<h3>Equipment</h3><p>{esc(meta['equipment_note'])}</p>")
     A("</div><div>")
     A("<h3>Data sources</h3><ul>"
       f"<li>Activities, power, pace, load: <b>intervals.icu</b> (Garmin-synced), {n} sessions "
@@ -187,6 +260,42 @@ def main() -> None:
       "<li>The plan is gated by a <b>deterministic validator</b> (ramp caps, recovery cadence, "
       "ACWR, intensity distribution, taper window, race-day TSB). See &sect;8.</li></ul>")
     A("</div></div>")
+
+    if meta.get("planning_vs_stretch"):
+        A("<h3>Planning vs stretch inputs</h3><p class='small'>Planning values drive every watt, "
+          "pace, IF check and race TSS in this plan; stretch values are labels.</p>")
+        A("<table><tr><th>Input</th><th class='r'>Planning</th><th class='r'>Stretch</th>"
+          "<th>Note</th></tr>")
+        for row in meta["planning_vs_stretch"]:
+            A(f"<tr><td>{esc(row['input'])}</td><td class='r mono'>{esc(row['planning'])}</td>"
+              f"<td class='r mono'>{esc(row['stretch'])}</td><td class='small'>{esc(row.get('note', ''))}</td></tr>")
+        A("</table>")
+    if meta.get("demonstrated_vs_modelled"):
+        A("<h3>Demonstrated vs modelled (full distance)</h3>")
+        A("<table><tr><th>What</th><th class='r'>Total</th><th>Swim / bike / run</th></tr>")
+        for row in meta["demonstrated_vs_modelled"]:
+            A(f"<tr><td>{esc(row['what'])}</td><td class='r mono'>{esc(row['total'])}</td>"
+              f"<td class='small'>{esc(row['legs'])}</td></tr>")
+        A("</table>")
+    if meta.get("data_todos"):
+        A("<h3>Data TODOs</h3><ul class='small'>")
+        for item in meta["data_todos"]:
+            A(f"<li>{esc(item)}</li>")
+        A("</ul>")
+
+    # Every meta key ending in `_note` is athlete-facing coaching content (equipment,
+    # fueling, swim, testing, body composition, durability...). Rendered generically
+    # so adding a protocol to the spec is enough to get it into the report — these
+    # used to sit in the YAML and never reach the PDF the athlete actually reads.
+    notes = [(k, v) for k, v in meta.items()
+             if k.endswith("_note") and k != "rationale" and str(v).strip()]
+    if notes:
+        A("<h2 class='pb'>1b &middot; Protocols</h2>")
+        A("<div class='grid2'>")
+        for k, v in notes:
+            label = k[:-5].replace("_", " ").title()
+            A(f"<div><h3>{esc(label)}</h3><p class='small'>{esc(str(v).strip())}</p></div>")
+        A("</div>")
     A("<div class='note small'>Decision-support, not medical or coaching advice. Physiology "
       "values are estimates with provenance tags. Validate paces/powers in training and adjust "
       "to in-session readiness.</div>")
@@ -220,15 +329,15 @@ def main() -> None:
     for k, v, src in [
         ("Weight", f"{tv(prof['anthropometrics']['weight_kg'])} kg",
          prof['anthropometrics']['weight_kg'].get('source')),
-        ("FTP (bike)", f"{tv(prof['bike']['ftp_w'])} W ({tv(prof['bike']['ftp_w_per_kg'])} W/kg)",
-         "intervals settings"),
+        ("FTP (bike, planning)", f"{tv(prof['bike']['ftp_w'])} W ({tv(prof['bike']['ftp_w_per_kg'])} W/kg)",
+         prof['bike']['ftp_w'].get('source') or "—"),
         ("VO2max (bike)", vo2_bike_val, vo2_bike_src),
         ("Run threshold", run_thr_val, run_thr.get("source") or "—"),
         ("VO2max (run)", vo2_run_val, vo2_run_src),
-        ("LTHR", f"{tv(prof['bike']['lthr_bpm'])} bpm", "intervals settings"),
-        ("Max HR", f"{tv(prof['bike']['max_hr_bpm'])} bpm", "intervals settings"),
+        ("LTHR", f"{tv(prof['bike']['lthr_bpm'])} bpm", prof['bike']['lthr_bpm'].get('source') or "—"),
+        ("Max HR", f"{tv(prof['bike']['max_hr_bpm'])} bpm", prof['bike']['max_hr_bpm'].get('source') or "—"),
         ("Swim CSS", swim_css_val, swim_css_src),
-        ("Bike decoupling", f"{tv(prof['durability']['bike']['decoupling_pct'])} %", "Pw:Hr"),
+        ("Bike decoupling", f"{tv(prof['durability']['bike']['decoupling_pct'])} %", "Pw:Hr, trinity durability"),
     ]:
         A(f"<tr><td>{esc(k)}</td><td class='r mono'>{esc(v)}</td>"
           f"<td class='small'>{esc(src)}</td></tr>")
@@ -251,11 +360,8 @@ def main() -> None:
           f"<td class='r mono'>{tv(L['atl'])}</td><td class='r mono'>{tv(L['tsb'])}</td>"
           f"<td>{esc(L['trend'])}</td></tr>")
     A("</table>")
-    A(f"<div class='note'><b>The headline limiter: swim.</b> Swim CTL <b>{tv(load['swim']['ctl'])}</b> "
-      f"vs bike {tv(load['bike']['ctl'])} / run {tv(load['run']['ctl'])}. Only ~{ytd_swim_h:.0f} h "
-      f"swimming logged in {end.year}. The swim costs little time on the clock but, untrained, it "
-      "taxes the whole day. The plan holds <b>swim &ge; 3&times;/week</b> throughout &mdash; the "
-      "single highest-leverage change.</div>")
+    A(f"<p class='small'>Swim CTL {tv(load['swim']['ctl'])} vs bike {tv(load['bike']['ctl'])} / "
+      f"run {tv(load['run']['ctl'])}; ~{ytd_swim_h:.0f} h swimming logged in {end.year}.</p>")
     if spec.get("trajectory_note"):
         A("<h3>Why the targets are plausible (YoY trajectory)</h3><ul>")
         for t in spec["trajectory_note"]:
@@ -310,13 +416,12 @@ def main() -> None:
       "peak weeks as an extension of proven load, not a step into the unknown.</div>")
 
     # 5. Target splits
-    A("<h2 class='pb'>5 &middot; Target race splits</h2><div class='grid2'>")
+    A("<h2 class='pb'>5 &middot; Race cards: planning and stretch splits</h2><div class='grid2'>")
     for r in races:
-        total = time_to_s(r["target_time"])
-        A("<div>")
-        A(f"<h3>{esc(r['name'])} &rarr; {esc(r['target_time'])}</h3>")
-        A(f"<table><tr><th>Leg</th><th class='r'>Target</th><th>Detail</th></tr>"
-          f"{split_table(r['splits'], total)}</table>")
+        pr = PRIORITY.get(str(r.get('priority')).upper(), "")
+        A("<div class='card'>")
+        A(f"<h3>{esc(r['name'])} ({esc(pr)}) &rarr; {race_line(r)}</h3>")
+        A(f"<table>{split_table(r['splits'])}</table>")
         if r.get("compare_note"):
             A(f"<p class='small'>{esc(r['compare_note'])}")
             if r.get("stretch_note"):
@@ -352,6 +457,12 @@ def main() -> None:
 
     # Session detail
     A("<h3 class='pb'>Session detail</h3>")
+    A("<p class='legend'>"
+      f"<span class='ico i-swim'>{_ICONS['swim']}</span> swim "
+      f"<span class='ico i-bike'>{_ICONS['bike']}</span> bike "
+      f"<span class='ico i-run'>{_ICONS['run']}</span> run "
+      f"<span class='ico i-strength'>{_ICONS['strength']}</span> strength"
+      "</p>")
     DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     for w in plan["weeks"]:
         A(f"<div style='margin-top:12px'><b class='wk'>Week {w['week_index']}</b> "
@@ -364,7 +475,10 @@ def main() -> None:
             tag = ("<span class='tag t-race'>race</span>" if s["category"] == "RACE"
                    else t_tag(s["intensity_class"]))
             br = " <span class='tag t-moderate'>brick</span>" if s.get("is_brick") else ""
-            A(f"<tr><td class='day mono'>{esc(dn)}</td><td>{esc(s['name'])}{br}</td>"
+            done = ""
+            if meta.get("done_through") and s["date"] <= str(meta["done_through"]):
+                done = " <span class='tag t-done'>done</span>"
+            A(f"<tr><td class='day mono'>{esc(dn)}</td><td>{sport_icon(s)}{esc(s['name'])}{br}{done}</td>"
               f"<td>{tag}</td><td class='r mono'>{hms(s['planned_duration_s'])}</td>"
               f"<td class='r mono'>{s['planned_tss']:.0f}</td>"
               f"<td class='small'>{esc(s.get('description') or '')}</td></tr>")
@@ -374,46 +488,56 @@ def main() -> None:
     A("<h2 class='pb'>7 &middot; Why this calendar</h2>")
     if meta.get("rationale"):
         A(f"<p>{esc(meta['rationale'])}</p>")
-    A("<h3>Progressive overload, bounded</h3>"
-      "<p>Load grows peak-to-peak at &le;10% TSS/week between <i>load</i> weeks (recovery valleys "
-      f"excluded); projected CTL ramp stays under the 7/week cap. Starting CTL ~{tv(load['combined']['ctl'])}. "
-      "A recovery valley (W7) and the first-race deload keep ACWR under 1.5.</p>")
-    A("<h3>Swim, the limiter</h3><p>Three swims every week regardless of phase. Frequency &gt; "
-      "duration for a thin swim base: it builds feel-for-water and durability without stealing the "
-      "bike/run hours that move the clock more.</p>")
-    A("<h3>Bike: convert the watts</h3><p>Long rides are on the TT bike in race position so the "
-      "new disc/aero setup becomes a real race split, not a dyno number. Race-power long rides "
-      "rehearse IM pacing and fuelling (70-90 g carb/h).</p>")
-    A("<h3>Run: durability over speed</h3><p>The IM result lives or dies on the run. Volume is "
-      "aerobic (Z2) with race-effort finishes and brick runs off long rides so the legs learn IM "
-      "marathon pace under fatigue &mdash; never a full-distance run.</p>")
-    A("<h3>Taper &amp; race-day form</h3><p>Two-week taper holds intensity but cuts volume so "
-      "fatigue (ATL) sheds faster than fitness (CTL). The validator projects race-day TSB in the "
-      "+10..+25 band that maximizes A-race performance without going stale.</p>")
+    # 8. Guardrail -- computed from the validator, never hardcoded.
+    from trinity.cli import _validate_with_profile
 
-    # 8. Guardrail
+    report = _validate_with_profile(TrainingPlan.model_validate(plan))
+    status = ("<b class='good'>PASS</b>" if report.ok else "<b class='bad'>FAIL</b>")
     A("<h2 class='pb'>8 &middot; Guardrail report</h2>")
-    A("<p>Checked by the deterministic validator (<span class='mono'>aithlete validate</span>): "
-      "<b class='good'>PASS</b> (0 errors).</p>")
-    A("<table><tr><th>Check</th><th>Result</th></tr>"
-      "<tr><td>Weekly TSS ramp (peak-to-peak ≤10%)</td><td class='good'>pass</td></tr>"
-      "<tr><td>CTL ramp ≤7/wk</td><td class='good'>pass</td></tr>"
-      "<tr><td>Recovery cadence (≤3 load wks)</td><td class='good'>pass</td></tr>"
-      "<tr><td>Projected ACWR ≤1.5</td><td class='good'>pass</td></tr>"
-      "<tr><td>Taper window</td><td class='good'>pass</td></tr>"
-      "<tr><td>Race-day TSB in A-band</td><td class='good'>pass</td></tr>"
-      "<tr><td>Swim/bike/run frequency mins</td><td class='good'>pass</td></tr>"
-      "<tr><td>Brick in every build week</td><td class='good'>pass</td></tr></table>")
-    A("<p class='small'><b>Advisory warnings (non-blocking):</b> (a) the post-first-race weekly-hours "
-      "step into the bigger block (TSS ramp stays within cap); (b) race-specific and taper weeks dip "
-      "below the 70% easy-time floor because short quality work is a larger fraction of low volume. "
-      "Total stress stays easy-dominated.</p>")
+    A(f"<p>Deterministic validator (<span class='mono'>trinity validate</span>), run at report "
+      f"time: {status} &mdash; {len(report.errors)} errors, {len(report.warnings)} advisory "
+      "warnings. The season spec also passed the text lint (declared FTP/CdA values, fuel "
+      "ceiling, split totals, calendar references, dated facts) before the plan was built.</p>")
+    checks = [
+        (("weekly_tss_jump", "weekly_hours_jump"), "Weekly ramp (peak-to-peak &le;10%; race weeks are not a baseline)"),
+        (("ramp_too_steep", "build_block_too_timid"), "CTL ramp &le;7/wk, and enough to adapt"),
+        (("no_recovery_week", "fake_recovery_week"), "Recovery cadence (real &ge;40% valleys)"),
+        (("projected_acwr_spike",), "Projected ACWR &le;1.5"),
+        (("label_contradicts_content",), "Session label matches its prescription"),
+        (("tss_not_from_content",), "Planned TSS follows the prescription (&plusmn;25%)"),
+        (("no_taper", "taper_duration_out_of_range", "taper_too_shallow"), "Taper present, sized, and &ge;40% below peak (A races)"),
+        (("post_race_too_heavy",), "4 days after every race &le;50% of normal load"),
+        (("run_stacking",), "&le;90' marathon/IM-pace running in any 36 h"),
+        (("monday_session", "no_rest_day"), "Monday rest day (documented exceptions only)"),
+        (("race_tsb_out_of_range", "a_race_below_season_peak"), "Race-day form in its priority band; A race is the fitness peak"),
+        (("too_much_intensity",), "Easy-time floor (from prescription content)"),
+        (("low_frequency", "missing_brick", "hard_sessions_too_close", "stacked_long_day",
+          "session_too_long", "over_volume_tolerance", "weekly_hours_over_hard_limit"),
+         "Frequency, bricks, spacing and hard limits"),
+    ]
+    A("<table><tr><th>Check</th><th>Result</th></tr>")
+    for codes, label in checks:
+        hits = [i for i in report.issues if i.code in codes]
+        if not hits:
+            res = "<span class='good'>pass</span>"
+        elif any(i.severity.value == "error" for i in hits):
+            res = f"<span class='bad'>{len(hits)} error(s)</span>"
+        else:
+            res = f"<span class='warn'>{len(hits)} advisory</span>"
+        A(f"<tr><td>{label}</td><td>{res}</td></tr>")
+    A("</table>")
+    if report.issues:
+        A("<h3>Issues</h3><ul class='small'>")
+        for i in report.issues:
+            A(f"<li><b>{esc(i.severity.value)}</b> <span class='mono'>{esc(i.code)}</span>: "
+              f"{esc(i.message)}</li>")
+        A("</ul>")
 
     # 9. Execute
     A("<h2>9 &middot; Execute</h2><p>Publish planned workouts to intervals.icu (syncs to Garmin):</p>")
-    A(f"<pre class='mono note'>uv run aithlete validate data/plans/{esc(meta['plan_id'])}.json\n"
-      f"uv run aithlete push     data/plans/{esc(meta['plan_id'])}.json   # gated by the validator</pre>")
-    A("<p class='small'>Re-run <span class='mono'>aithlete profile</span> after the first race to "
+    A(f"<pre class='mono note'>uv run trinity validate data/plans/{esc(meta['plan_id'])}.json\n"
+      f"uv run trinity push     data/plans/{esc(meta['plan_id'])}.json   # gated by the validator</pre>")
+    A("<p class='small'>Re-run <span class='mono'>trinity profile</span> after the first race to "
       "refresh CTL/FTP/PRs, then <span class='mono'>adjust-plan</span> if readiness moves the "
       "targets.</p>")
 
@@ -448,6 +572,7 @@ tr.tot td { font-weight: 700; background: #f6f8fb; }
 .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 9px;
        font-weight: 700; text-transform: uppercase; }
 .t-easy { background: #e3f0ff; color: #0b66c3; }
+.t-done { background: #e7f6ec; color: #127a3f; }
 .t-moderate { background: #fff1d6; color: #9a6b00; }
 .t-hard { background: #ffe0e3; color: #b00020; }
 .t-race { background: #122; color: #fff; }
@@ -459,9 +584,16 @@ tr.tot td { font-weight: 700; background: #f6f8fb; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
 ul { margin: 5px 0; padding-left: 18px; }
 @page { margin: 14mm 14mm 16mm; }
-h2 { break-after: avoid; } table, .note { break-inside: avoid; }
+h2, h3 { break-after: avoid; } table, .note, .card { break-inside: avoid; }
 .pb { break-before: page; }
 .wk { font-weight:700; } .day { color: var(--mut); width: 78px; }
+.ico { display: inline-block; width: 12px; height: 12px; margin-right: 3px; vertical-align: -2px; }
+.ico svg { width: 12px; height: 12px; display: block; }
+.i-swim { color: #0b66c3; } .i-bike { color: #c2410c; }
+.i-run { color: #127a3f; } .i-strength { color: #6d28d9; }
+.legend { color: var(--mut); font-size: 10px; margin: 2px 0 8px; }
+.legend .ico { margin-left: 10px; }
+.legend .ico:first-child { margin-left: 0; }
 """
 
 

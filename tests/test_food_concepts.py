@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from aithlete.connectors import food_concepts as fc
-from aithlete.connectors.fooddata import FoodCandidate
+from trinity.connectors import food_concepts as fc
+from trinity.connectors.fooddata import FoodCandidate
 
 EGG_WHOLE = {"fdcId": 171287, "description": "Egg, whole, raw, fresh",
              "foodNutrients": [{"nutrient": {"id": 1087, "unitName": "MG"}, "amount": 56.0}]}

@@ -18,7 +18,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_plan as bp  # noqa: E402
 
-from aithlete.planning.validator import _daily_plan_tss, validate_plan  # noqa: E402
+from trinity.planning.validator import _daily_plan_tss, validate_plan  # noqa: E402
 
 SPEC = Path(__file__).resolve().parents[1] / "examples" / "season-2026-malbork.yaml"
 

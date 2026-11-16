@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from aithlete.connectors.dedup import dedup_activities, merge_wellness
+from trinity.connectors.dedup import dedup_activities, merge_wellness
 
 
 def _act(start, sport_type, dur, source="intervals"):

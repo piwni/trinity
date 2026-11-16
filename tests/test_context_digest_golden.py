@@ -10,9 +10,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from aithlete.analysis import context, profile_builder
-from aithlete.analysis import readiness as readiness_mod
-from aithlete.analysis.loaders import data_as_of
+from trinity.analysis import context, profile_builder
+from trinity.analysis import readiness as readiness_mod
+from trinity.analysis.loaders import data_as_of
 
 GOLDEN = Path(__file__).parent / "golden" / "context_digest.json"
 CALENDAR = [{"name": "Demo 70.3", "date": "2026-08-09", "bucket": "half", "priority": "A"}]

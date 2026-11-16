@@ -1,6 +1,6 @@
 # Disclaimer — Not Medical Advice
 
-Aithlete is an open-source tool for analysing training data and generating
+Trinity is an open-source tool for analysing training data and generating
 training plans. It is **not** a medical device and does **not** provide medical
 advice, diagnosis, or treatment.
 

@@ -12,10 +12,10 @@ plan, keep it safe via the same validator, and re-push only the changed events.
 
 1. **Assess current state**:
    ```bash
-   uv run aithlete fetch
-   uv run aithlete readiness            # add --illness above_neck|below_neck or --subjective 1-5 if relevant
-   uv run aithlete profile
-   uv run aithlete context
+   uv run trinity fetch
+   uv run trinity readiness            # add --illness above_neck|below_neck or --subjective 1-5 if relevant
+   uv run trinity profile
+   uv run trinity context
    ```
    Read `data/context/athlete.json` (note `readiness_flag` and `readiness_notes`)
    and the active plan `data/plans/athlete-active.json`.
@@ -38,8 +38,8 @@ plan, keep it safe via the same validator, and re-push only the changed events.
 
 4. **Re-validate and re-push**:
    ```bash
-   uv run aithlete validate data/plans/athlete-active.json
-   uv run aithlete push data/plans/athlete-active.json --target intervals
+   uv run trinity validate data/plans/athlete-active.json
+   uv run trinity push data/plans/athlete-active.json --target intervals
    ```
    If validation now fails (e.g. compressing sessions broke the ramp/taper),
    fix it before pushing. Never push with errors.

@@ -1,4 +1,4 @@
-# Aithlete readiness / monitoring rulebook — PARAMETERIZED.
+# Trinity readiness / monitoring rulebook — PARAMETERIZED.
 #
 # `analysis/readiness.py` loads this to turn daily health metrics into red/amber/
 # green flags + a recommended action. Aggregation is WORST-WINS: the overall

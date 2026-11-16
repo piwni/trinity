@@ -1,0 +1,1332 @@
+# Season spec -- Wolsztyn 70.3 (raced 2026-09-19) -> 2027 race season -> Castle
+# Triathlon Malbork full (2027-09-05, A) -> IRONMAN Hamburg (2028-06-04, A).
+#
+# Two columns everywhere: PLANNING values drive every watt, pace, IF check and
+# race TSS; STRETCH values (8:50 Malbork, 8:40 Hamburg) are labels. See
+# meta.planning_vs_stretch. Bike splits: data/context/spec_gen/projections.py.
+# Consistency is enforced by `build_plan` (spec_lint: declared FTP/CdA values,
+# fuel ceiling, split totals, calendar references, knowledge/triathlon/facts.yaml).
+#
+# Unpublished dates (assumed from the 2026 pattern): Syców 2027-07-11, Malbork
+# 2027-09-05, Mietków 2027-06-19 (if it lands on 12 Jun it collides with the
+# HM: race the HM, skip Mietków), IRONMAN Hamburg 2028-06-04, Kona 2028 date
+# not announced (2028-10-14 assumed). Tune-up 70.3 2028-04-30: race not yet chosen.
+
+meta:
+  athlete_id: athlete
+  plan_id: goal-2028-b
+  done_through: "2026-11-15"
+  start_date: 2026-09-07
+  starting_ctl: 69.4
+  ftp_w: 250                    # PLANNING FTP. Tested 29 Sep 2026: 249 W indoors (stretch 255 unsupported)
+  run_threshold_s_per_km: 215   # PLANNING 3:35/km until the spring 2027 10 km test (stretch 212)
+  rest_weekday: 0               # Monday is a rest day; the validator enforces it
+  title: "Trinity 2028-b -- volume remodel from 5 Oct 2026"
+  volume_ceiling_hours:
+    to_first_race: 12
+    after_first_race: 17
+  swim_css: "1:46-1:52/100m"
+  declared:
+    # Every FTP / CdA the prose may state. spec_lint fails on any other value.
+    ftp_w: [236, 245, 247, 249, 250, 255, 256, 257, 258, 260, 262, 265, 275, 280]
+    cda: [0.185, 0.194, 0.198, 0.216, 0.225, 0.226, 0.232,
+          0.220, 0.237, 0.239, 0.245, 0.252]
+    fuel_ceiling_g_per_h: 95
+  planning_vs_stretch:
+    - { input: "FTP now (4iiii)",       planning: "250 W", stretch: "255 W", note: "Tested 29 Sep 2026: 20 min at 261.7 W indoors -> FTP 249 W. Confirms 250; 255 is not supported" }
+    - { input: "FTP at Malbork",        planning: "258 W", stretch: "265 W", note: "+8-10 W/yr in a third long-course season" }
+    - { input: "FTP at Hamburg",        planning: "265 W", stretch: "275 W", note: "" }
+    - { input: "CdA Malbork (effective)", planning: "0.232", stretch: "~0.194 needed", note: "Disc fits 0.220-0.239; Malbork 2025 no-aero 0.245. 8:50 needs a position change, not a wheel" }
+    - { input: "CdA Hamburg (effective)", planning: "0.225", stretch: "~0.185 needed", note: "Planning assumes a year of position work (-0.007)" }
+    - { input: "Run threshold",         planning: "215 s/km (3:35)", stretch: "212 s/km (3:32)", note: "A 10 km test in spring 2027 decides" }
+    - { input: "Malbork swim 3.8 km",   planning: "1:12", stretch: "1:09", note: "Demonstrated here: 1:20:08 (2025), 1:22 (2026). 1:09 gated on a <2:00/100 cold swim" }
+    - { input: "IM marathon (Malbork)", planning: "3:04 (4:22/km)", stretch: "3:00 (4:16/km)", note: "" }
+    - { input: "Malbork total",         planning: "9:17", stretch: "8:50", note: "Held as the optimistic stretch" }
+    - { input: "Hamburg total",         planning: "9:07", stretch: "8:40", note: "Qualifying line on 2026 data is ~9:21 (M40-44), see qualifying note" }
+  demonstrated_vs_modelled:
+    - { what: "Demonstrated full distance (Malbork 2025, official)", total: "10:27:00", legs: "1:20:08 / 5:19:29 / 3:46:48 (device legs, 170 W NP, no aero)" }
+    - { what: "Athlete self-assessment today (not raced)", total: "9:10", legs: "1:10 / 4:45 / 3:10 -- the 4:45 at 190 W implies CdA 0.198" }
+    - { what: "Model at today's planning inputs", total: "~9:29", legs: "1:15 / 4:59 / 3:10 + 5' T -- FTP 250 (190 W), CdA 0.232" }
+    - { what: "Malbork 2027 planning", total: "9:17", legs: "1:12 / 4:56 / 3:04 + 5' T" }
+    - { what: "Malbork 2027 stretch", total: "8:50", legs: "1:09 / 4:37 / 3:00 + 4' T" }
+    - { what: "Hamburg 2028 planning / stretch", total: "9:07 / 8:40", legs: "1:10 / 4:51 / 3:02 -- 1:07 / 4:30 / 2:59" }
+  data_todos:
+    - "4iiii: left-only or dual-sided? If left-only, every power-fade figure (incl. Malbork 2025's 12.2%) carries an L/R-balance caveat."
+    - "Wolsztyn 2026 actual intake: g/h CHO on bike and run, ml/h fluid, products, air temperature. Until then 'gels on the bike' is a hypothesis."
+    - "Wolsztyn 2026 swim: which HR sensor (wrist optical vs chest strap)?"
+    - "Syców swim course length: 34:00 is 1:47/100 over 1.9 km, faster than pool CSS; athlete reports ~1:50/100."
+    - "Kona qualifying cut-off: re-pull the IRONMAN Hamburg performance-pool line after the 2027 race (2026: age-graded 9:03:44, media-reported)."
+    - "Fat-free mass: state how it is measured before any energy-availability figure is used."
+    - "23 Aug 2026 run: the file says 30.0 km at 4:50/km moving; the athlete recalls ~4:40/km. Reconcile against the activity."
+    - "Wolsztyn official splits: device legs sum to the official 4:38:21 only with the 1:34:48 run leg (1:34:26 is moving time). Confirm on the results page."
+  calibration_note: >
+    TESTED FTP is 249 W (29 Sep 2026, indoors on the KICKR in resistance mode, paced
+    off the 4iiii: best 20 min 261.7 W x 0.95). PLANNING stays 250 W, since 1 W is
+    inside the meter's noise, and the 255 W stretch reading is not supported. The IF
+    cap uses the tested 249 W, which is 189 W today. The meter is self-consistent --
+    ERG blocks read ~200 W against a 200 W target -- but that only shows ERG control
+    works: its absolute accuracy is untested, and it may be left-only (data TODO).
+    The test series is INDOORS from here, on this same setup (resistance or passive
+    mode, never ERG, same warm-up), because an indoor number reads differently from
+    an outdoor one and mixing them breaks the trend. One OUTDOOR 20-min TT each
+    spring (weeks 27 and 81, same road segment) cross-checks the series and is kept
+    out of the indoor trend. No ramp tests. IRONMAN race watts = the lower of
+    IF 0.76 x the latest tested FTP and the highest power that has passed the
+    durability gate (outdoor 4 h ride, 3x40' at that power, power fade <5% and
+    Pw:HR drift <5%). Never buy a bike split with intensity: it trades ~5 bike
+    minutes for ~15 run minutes. The intervals.icu FTP setting (280 W) is ~10% high:
+    set it to 249 W and run threshold to 3:35/km so platform TSS, IF and CTL are honest.
+  aero_note: >
+    Every CdA here is EFFECTIVE CdA in 4iiii watts from one model (`trinity aero`):
+    station wind at 10 m scaled x0.65 to rider height; headwind per 1 km segment
+    from the course's actual bearing (v cos theta); measured course length; and the
+    SAME air density, rolling resistance and drivetrain loss for the fit and the
+    prediction (rho 1.20, Crr 0.0045, eta 0.975, 83 kg system). Race-time fits: Malbork
+    2025 0.245 and Mietków 2026 0.252 (no aero); Sieraków 2026 0.237, Syców 2026
+    0.239 (meter failed; at an assumed 225 W) and Wolsztyn 2026 0.220 (disc). The
+    earlier 0.158-0.210 fits were biased low: that model charged all climbing as lost
+    energy, split every course half into the wind, and dropped ~4% of Syców's
+    distance. Disc plus deep front is worth 0.010-0.020 against training wheels; add
+    0.003-0.008 over 4.5 h for position decay and sitting up to drink. PLANNING: CdA
+    0.232 Malbork, CdA 0.225 Hamburg, CdA 0.226 for the 70.3s. The stretch targets need
+    CdA 0.194 (8:50, at 201 W) and CdA 0.185 (8:40, at 209 W) -- 0.03-0.04 below every
+    disc fit so far, which is a position change, not equipment. The athlete's own 4:45
+    current-fitness bike implies CdA 0.198, so 8:50 and his self-assessment rest on the
+    same unmeasured number. FIRST AERO TEST in weeks 4-10, first calm day: Chung
+    virtual-elevation on a closed loop, >=6 laps at two speeds, race kit and race
+    bottles. Then every spring and autumn.
+  run_note: >
+    PLANNING threshold 215 s/km (3:35/km); 212 is the stretch reading. The 1:18:00
+    half of 2026-06-06 averaged HR 160 against LTHR 165 for 78 minutes -- 97% of LTHR,
+    a near-maximal effort. HR was 164 by km 17 at 3:45-3:50/km; the 3:25 last km
+    shows neuromuscular reserve, not aerobic reserve. The genuine mitigating fact:
+    it was run 7 days after Sieraków 70.3. Fresh estimate 1:16:30-1:17:15. A 10 km
+    test in spring 2027, run all-out, decides it: ~34:30 -> 212, ~35:00 -> 215, 35:25 or slower
+    -> 218; every pace is re-derived from the result. The strongest durability
+    evidence in the file is 22 Aug 2026: 27.2 km at 4:25/km (HR 147->150, 0.7% pace
+    fade) run as a BRICK off a 4:30 indoor ride (3x40' at a 200 W target, the rest
+    ~160 W; ride NP ~175-180 W, IF ~0.70), then 30 km easy Z2 the next morning. The
+    caveat that goes with it: race load is ~IF 0.76 for 4:40+ after a 3.8 km swim
+    (~25-30% more bike stress), and km 28-42 have not been run off a bike since
+    Malbork 2025. Wolsztyn's run course is closer to a trail run than a road half and
+    was run on a failed gut, so it is not a calibration point.
+  swim_note: >
+    PLANNING Malbork swim 1:12. The 1:09 stretch opens only after one swim under
+    2:00/100 over >=2 km in <=18 C water before week 46. Demonstrated at this venue:
+    1:20:08 (2025) and 1:22 (2026, 17.2 C), so 1:09 is an 11-13 minute gain -- the
+    biggest per-leg ask in the plan. The working hypothesis is cold/open-water skill
+    rather than pool fitness, and it gets TESTED: a 1500 m TT in the pool and a
+    1500 m TT in open water in the same week, RPE logged, to separate cold/OW skill
+    from sighting, wetsuit restriction, start anxiety and course length. (Wolsztyn's
+    swim HR of 110 is not evidence either way: swim HR runs 10-15 bpm below run HR at
+    equal effort and wrist optical HR in water is unreliable -- sensor TODO.)
+    Cold-shock habituation: 6 immersions of 3-5 min at 10-15 C in October 2026 and
+    April 2027, repeated October 2027 and April 2028. The three race-temperature
+    swims in the last 3 weeks before each IM are familiarisation, not adaptation.
+    Open water whenever it is >=14 C. The Alster in early June is 16-19 C: none of
+    the Hamburg swim gain is a warm-water gain.
+  testing_note: >
+    Bike tests: week 4 done (FTP 249 W, indoors). Then indoors in weeks 17, 46, 56,
+    69, and outdoors once each spring (weeks 27 and 81) as a cross-check kept out of
+    the indoor trend. Same warm-up throughout; swim 400 m + 200 m CSS in the same
+    weeks. Run: no 10 km in November 2026 (Web
+    Summit). First 10 km test in spring 2027 (week 31, the pre-Malbork run
+    diagnostic), then a 10 km or 5 km TT in weeks 57, 65 and 74. Aero: Chung test in weeks 4-10, then every spring
+    and autumn. Pool vs open-water 1500 m TT pair in the first OW weeks of 2027.
+    Durability gate (outdoor 4 h, 3x40' at race watts): weeks 46-48 and 84-86.
+    Re-derive every watt and pace after each round.
+  loading_note: >
+    Cadence is 4:1 -- four load weeks, then a recovery valley at >=40% lower load --
+    in every base and threshold block. The exceptions are deliberate: 2:1 into the
+    two holiday weeks (16, 68), and the race-structured summers, where races and
+    their recovery days replace valleys. The validator excludes race weeks and
+    post-race days from the ramp baseline.
+  fueling_note: >
+    Wolsztyn 2026: GI distress from km 3 of the run after gels on the bike; the gut
+    'unlocked' around km 18, i.e. ~70 minutes of little absorption. Actual Wolsztyn
+    intake is not recorded yet (data TODO); if it was <=60 g/h, this plan RAISES gut
+    load, deliberately and progressively: 60 g/h (autumn) -> 75 (winter) -> 85
+    (spring) -> 85-95 g/h on the bike in the IM blocks, 60-75 g/h on brick runs.
+    Ceiling 95 g/h. CARBOHYDRATE AND FLUID ARE SET SEPARATELY: one concentrated 1:0.8
+    glucose:fructose bottle (or hydrogel) plus plain water bottles, so g/h does not
+    depend on ml/h. Gels on the run are fine and stay. FLUID = 60-80% of measured
+    sweat rate for the conditions, and never finish a session heavier than you
+    started; until two sweat tests are done, 500-800 ml/h and drink to thirst above
+    that. Sodium 600-800 mg/L. LONG-GUT VALIDATION before Malbork: one 5 h outdoor
+    ride at 85-95 g/h in race-morning conditions in weeks 46-48, GI-scored -- Syców's
+    2:15 bike does not validate 4:40 of intake. Last 30' of every race-sim ride is
+    fluid only, then fuel the brick. No new product inside 6 weeks of an A race.
+    FALLBACK LADDER (GI score >=3 at Syców, the weeks 46-48 ride or the tune-up drops
+    one rung for good): (1) 75 g/h, one CHO bottle plus water; (2) first 2 h
+    semi-solid, liquid after; (3) hydrogel for the last hour only; (4) a 60 g/h floor
+    with full fluid and sodium. IN-RACE RESCUE IS MANDATORY: at the first sign of the
+    Wolsztyn pattern stop carbohydrate for 10', water or cola only, walk one aid
+    station, resume at 30 g/h and build back. At IM distance the same failure after
+    4:40 of bike intake leaves 25+ km to run in deficit. Caffeine <=3 mg/kg, first
+    dose >=90' into the bike, never from a new source.
+  durability_note: >
+    Measured by `trinity durability` from raw streams: Pa:Hr for runs, Pw:Hr for
+    rides, plus pace/power FADE, which catches the failure decoupling misses (output
+    and HR falling together). The fuel-failure signature fires on 6 sessions,
+    including Wolsztyn's run. Power fade cannot be measured on ERG, where power is
+    held by construction, so the 32 indoor rides report decoupling only and every
+    fade target is ridden OUTDOORS (or indoors in level/resistance mode). If the
+    4iiii is left-only, part of any power fade -- including Malbork 2025's 12.2%
+    (176 -> 154 W) -- may be L/R balance shifting with fatigue. TARGETS: bike power
+    fade <5% and Pw:HR drift <5% on the 4 h 3x40' gate ride (weeks 46-48, 84-86);
+    run pace fade <3% on the long IM-pace brick.
+  equipment_note: >
+    Disc plus deep front is worth 0.010-0.020 of CdA; the rest of the stretch gap is
+    position, which is why the aero test comes first. MECHANICAL PROTOCOL (a Di2
+    failure ended the 2026 A race): drivetrain service 3 weeks before every A/B race;
+    Di2 at 100% within 72 h with charge cycles logged; 60' shakedown 48 h out with 30
+    shifts under load; junction box and wires checked after every transport; know
+    what the rear derailleur defaults to on battery or wire loss. Zero-offset the
+    4iiii before every race and recalibrate after any workshop visit. Before 2028,
+    moving the TT bike to mechanical or SRAM AXS is worth more than any aero gain.
+  heat_note: >
+    Only if a Kona slot is taken: 8 weeks of post-run sauna (30', 4x/week) plus
+    10-14 days on the island; book leave and travel in June 2028. For Hamburg itself,
+    optional sauna from week 83 for plasma volume.
+  body_comp_note: >
+    73 kg at 184 cm. Target 71 kg by week 30, then HOLD (week 74 checkpoint: 71 kg).
+    71 kg at the same power is worth ~1.5-2.5 min over an IM marathon. Tighten
+    non-training intake only; sessions stay fully fuelled (85-95 g/h in the IM
+    blocks). Energy availability cannot be read from the Fitatu ratios: it depends on
+    absolute intake and exercise energy, the log is off by ~281 kcal/day, and the
+    fat-free-mass method is not stated (TODO). g/kg macros are reported but are
+    inflated if intake is over-logged.
+  qualifying_note: >
+    From 2026 the World Championship is Kona only: one day, men and women together.
+    The 2028 date is not announced (early-mid October assumed). Slots at a qualifier:
+    each age group's winner (rolling to 2nd, then 3rd), then a performance pool
+    split by gender and ranked on age-graded time (finish x the Kona Standard
+    factor: M40-44 0.9683, M35-39 0.9895 in the 2027 cycle, updated each August). Age
+    group = age on 31 December of the qualifying year: M40-44 at Hamburg 2028, but
+    M35-39 at any 2027 race. Hamburg 2026 reference (media-reported, not official):
+    60 age-group slots, 44 to men; the last male pool slot went at age-graded
+    9:03:44, a 9:21:32 M40-44 finish. So the QUALIFYING LINE is about 9:20 raw, not
+    8:40: the planning 9:07 clears it by ~14 min on 2026 numbers, and 8:40 is the
+    stretch, not the requirement. Castle Triathlon Malbork is not IRONMAN-branded
+    and awards no slots, so Hamburg is the single qualifying attempt. Athlete
+    decision (2026-09-24): keep Malbork and accept that; no backup IRONMAN.
+  rationale: >
+    Wolsztyn 2026 (4:38:21) was a fueling result, not a fitness one: the bike was
+    correctly ridden (208 W NP = IF 0.83 on the planning 250 W FTP, VI 1.03, 4.3%
+    decoupling in 15 km/h wind) and the run fell from 4:02/km to 5:03/km with HR
+    FALLING -- no substrate, not an aerobic limit.
+
+    Demonstrated full distance is 10:27:00 (Malbork 2025). The planning line for
+    Malbork 2027 is 9:17 and for Hamburg 2028 is 9:07; 8:50 and 8:40 are held as
+    optimistic stretch targets. Where the planning minutes come from, against 2025:
+    swim 1:20 -> 1:12 (cold/OW skill; 1:09 would be 11-13 min), bike 5:19 -> 4:56
+    (disc + deep front, FTP 245 -> 258 at the same IF 0.76), run 3:47 -> 3:04 (a
+    weekly threshold session and 55-70 km/week instead of 35-45). The stretch lines
+    additionally need CdA ~0.03-0.04 better, which only the aero test can confirm.
+
+    2027 is a racing year on an honest engine: autumn strength, swim technique and
+    threshold work into November, then winter threshold and VO2 runs, spring volume into Sieraków
+    (B), then Syców (B) as the fueling dress rehearsal and seven IM-specific weeks
+    into Malbork. Winter 2027-28 moves the emphasis to the limiters 2027 exposes:
+    run volume and threshold, cold/open-water skill and gut capacity. Spring 2028 is
+    IM-specific with a tune-up 70.3 five weeks out and a Mujika taper (>=40% off the
+    peak over the final 14 days) -- the same shape as Malbork's.
+
+    Swim >=3/week and run >=4/week throughout. Monday is a genuine rest day.
+
+races:
+  - name: "GREATMAN Wolsztyn 70.3"
+    date: 2026-09-19
+    bucket: "1/2"
+    priority: B
+    target_time: "4:38:21"
+    target_swim: "36:41"
+    result_note: >
+      RACED 4:38:21 (official). GI distress from km 3 of the run after gels on the
+      bike; the bike was correctly executed.
+    compare_to_date: 2026-07-12
+    compare_note: >
+      vs Syców 2026 (4:24:05): windier, cold swim, failed fueling, 12 days after
+      the Malbork DNF. A healthy gut was worth ~9 minutes on the day.
+    splits:
+      - { leg: "Swim 1.9 km", target: "36:41", detail: "18.1 C. Device; official splits TODO" }
+      - { leg: "T1",          target: "2:37",  detail: "" }
+      - { leg: "Bike 90 km",  target: "2:22:13", detail: "208 W NP = IF 0.83 on the planning 250 W FTP. 474 m, 15 km/h wind. Correctly ridden" }
+      - { leg: "T2",          target: "2:01",  detail: "" }
+      - { leg: "Run 21.1 km", target: "1:34:48", detail: "Elapsed leg (moving 1:34:26). GI failure km 3-18; HR fell with pace" }
+
+  - name: "JBL Sieraków 70.3"
+    date: 2027-05-29
+    bucket: "1/2"
+    priority: B
+    target_time: "4:20"
+    planning_time: "4:25"
+    ftp_w: 256
+    target_swim: "34'"
+    stretch_note: >
+      Planning 4:25, stretch 4:20. Bike cap 212 W NP (IF 0.83 on the planning 256 W
+      FTP) on the device-measured 86.3 km course: 2:22 at CdA 0.226, 2:20 at CdA
+      0.216. The 2026 bike was slow because of a 20 km/h wind, not the terrain (the
+      recorded 1040 m of climbing is barometric noise). T1 is slow by design, a long
+      run from the lake: field median 6:13 in 2026, race best 3:09.
+    compare_to_date: 2026-05-30
+    compare_note: >
+      vs Sieraków 2026, OFFICIAL 4:45:56 = 35:58 / T1 4:42 / 2:31:04 / T2 3:25 /
+      1:30:47 (bib 250, M35, 62nd of 274). The official run contains a pee stop;
+      device run moving time was 1:28:50.
+    splits:
+      - { leg: "Swim 1.9 km", target: "34:00", planning: "35:00", detail: "Wetsuit lake; 35:58 in 2026" }
+      - { leg: "T1",          target: "3:45",  planning: "4:00",  detail: "Long run from the lake. Field median 6:13" }
+      - { leg: "Bike 86 km",  target: "2:20:26", planning: "2:22:13", detail: "212 W NP cap (IF 0.83 on 256). CdA 0.226 planning" }
+      - { leg: "T2",          target: "1:45",  planning: "2:00",  detail: "3:25 in 2026" }
+      - { leg: "Run 21.1 km", target: "1:19:30", planning: "1:22:00", detail: "3:53/km planning, 3:46 stretch; first 3 km 10 s/km slower. Gels fine" }
+
+  - name: "Nocny Wrocław Half Marathon"
+    date: 2027-06-12
+    bucket: "HM"
+    priority: C
+    target_time: "1:15"
+    planning_time: "1:17"
+    target_swim: "—"
+    stretch_note: >
+      A TRAINING RACE, raced off no taper 14 days after Sieraków: the result is a
+      lower bound on run fitness, not a diagnostic (that is the week-31 10 km TT).
+      Planning 1:17 (3:39/km), stretch 1:15.
+    compare_to_date: 2026-06-06
+    compare_note: >
+      vs 1:18:00 in 2026 (near-maximal, 7 days after Sieraków). Consistent with a
+      3:04 planning / 3:00 stretch Malbork marathon if it comes in at 1:15-1:17.
+    splits:
+      - { leg: "Run 21.1 km", target: "1:15:00", planning: "1:17:00", detail: "Night start, cool, fast course. First 3 km 5 s/km slower" }
+
+  - name: "GREATMAN Mietków 1/4 IM"
+    date: 2027-06-19
+    bucket: "1/4"
+    priority: C
+    target_time: "no target"
+    planning_time: "2:14"
+    ftp_w: 256
+    target_swim: "—"
+    stretch_note: >
+      NO TIME TARGET. C-race, kept by athlete decision (2026-09-24) with a bike cap
+      and the run by feel. The risk is racing 7 days after a near-maximal half-marathon --
+      soleus damage takes 7-10 days to repair -- not the taper. If raced: bike capped
+      at 215 W NP (IF 0.84 on 256), run by feel with no pace target.
+    compare_to_date: 2026-06-13
+    compare_note: "vs Mietków 2026, 2:18:07 (19:34 / 1:15:07 / 38:59, T 4:27), no aero wheels."
+    splits:
+      - { leg: "Swim 0.95 km", target: "—", planning: "18:30", detail: "" }
+      - { leg: "T1",           target: "—", planning: "1:45",  detail: "" }
+      - { leg: "Bike 45 km",   target: "—", planning: "1:12:52", detail: "215 W NP cap (IF 0.84 on 256). CdA 0.226" }
+      - { leg: "T2",           target: "—", planning: "1:00",  detail: "" }
+      - { leg: "Run 10.5 km",  target: "—", planning: "40:00", detail: "By feel, no pace target (~3:48/km)" }
+
+  - name: "Garmin Triathlon Tour Syców 1/2 IM"
+    date: 2027-07-11
+    bucket: "1/2"
+    priority: B
+    target_time: "4:15"
+    planning_time: "4:21"
+    ftp_w: 258
+    target_swim: "33'"
+    stretch_note: >
+      Planning 4:21, stretch 4:15. ONE bike cap: 212 W NP (IF 0.82 on 258) -- the run
+      only holds at or under it. The last full dress rehearsal of the fueling
+      protocol before Malbork: exact products, 85-90 g/h from the CHO bottle plus
+      water, last 30' of the bike fluid only, GI score logged.
+    compare_to_date: 2026-07-12
+    compare_note: >
+      vs Syców 2026 (4:24:05 = 34:00 / 2:19:49 / 1:25:42, T 4:34). The 2026 bike was
+      ridden at an estimated 220-230 W with a failed meter; 2027 rides a lower cap
+      and banks the time on the run. Fast, convenient run course (4:01/km in 2026).
+    splits:
+      - { leg: "Swim 1.9 km", target: "33:30", planning: "34:30", detail: "Wetsuit. Course length TODO (2026 read 1:47/100)" }
+      - { leg: "T1",          target: "1:30",  planning: "2:00",  detail: "" }
+      - { leg: "Bike 89 km",  target: "2:20:01", planning: "2:21:58", detail: "212 W NP cap (IF 0.82 on 258). CdA 0.226 planning" }
+      - { leg: "T2",          target: "1:00",  planning: "1:15",  detail: "" }
+      - { leg: "Run 21.1 km", target: "1:19:00", planning: "1:21:30", detail: "3:52/km planning, 3:45 stretch; first 3 km 10 s/km slower" }
+
+  - name: "Castle Triathlon Malbork (full)"
+    date: 2027-09-05
+    bucket: full
+    priority: A
+    target_time: "8:50"
+    planning_time: "9:17"
+    ftp_w: 258
+    target_swim: "1:09"
+    stretch_note: >
+      PLANNING 9:17; 8:50 held as the optimistic stretch. Bike at IF 0.76 on the
+      planning 258 W FTP = 196 W NP: 4:56 at CdA 0.232 in 3 m/s wind. 8:50 needs a
+      4:37 bike, i.e. 201 W (IF 0.76 on the stretch 265 W FTP) AND CdA 0.194, plus the
+      1:09 swim gate and a 3:00 marathon. Do not make up the difference with watts
+      above IF 0.76. Not IRONMAN-branded: awards no Kona slots.
+    compare_to_date: 2025-09-07
+    compare_note: >
+      vs Malbork 2025, official 10:27:00 (device legs 1:20:08 / 5:19:29 / 3:46:48;
+      170 W NP, 34.0 km/h, CdA 0.245 with no aero wheels). The 2026 edition was a Di2
+      DNF at ~45 km after a 1:22 swim in 17.2 C.
+    splits:
+      - { leg: "Swim 3.8 km", target: "1:09:00", planning: "1:12:00", detail: "Cold lake. 1:09 only after the <2:00/100 cold-swim gate" }
+      - { leg: "T1",          target: "2:30",  planning: "3:00",  detail: "Cold-water T1 is slow. Rehearse it" }
+      - { leg: "Bike 180 km", target: "4:37:00", planning: "4:55:34", detail: "196 W NP (IF 0.76 on 258), CdA 0.232, 478 m. Stretch: 201 W and CdA 0.194" }
+      - { leg: "T2",          target: "1:30",  planning: "2:00",  detail: "" }
+      - { leg: "Run 42.2 km", target: "3:00:00", planning: "3:04:00", detail: "4:22/km planning (122% of 3:35), 4:16 stretch. First 10 km 10 s/km slower. Bike 85-95 g/h, run 60-75 g/h" }
+
+  - name: "Tune-up 70.3 (race not yet chosen)"
+    date: 2028-04-30
+    bucket: "1/2"
+    priority: B
+    target_time: "4:15"
+    planning_time: "4:21"
+    ftp_w: 262
+    target_swim: "33'"
+    stretch_note: >
+      Five weeks before Hamburg: the race-condition test of the fueling protocol and
+      pacing, so Hamburg is not the first. Pick a race with an open-water swim.
+      The clock is secondary. Mon-Thu after it are easy (<=50% of normal daily load).
+    compare_to_date: 2027-07-11
+    compare_note: "vs Syców 2027. Same shape a winter later; 214 W NP cap (IF 0.82 on 262)."
+    splits:
+      - { leg: "Swim 1.9 km", target: "33:00", planning: "34:00", detail: "Open water, wetsuit" }
+      - { leg: "T1",          target: "1:30",  planning: "2:00",  detail: "" }
+      - { leg: "Bike 90 km",  target: "2:21:10", planning: "2:23:07", detail: "214 W NP cap (IF 0.82 on 262). Flat course assumed, CdA 0.226" }
+      - { leg: "T2",          target: "1:00",  planning: "1:15",  detail: "" }
+      - { leg: "Run 21.1 km", target: "1:18:30", planning: "1:21:00", detail: "Full race fuelling, GI score logged" }
+
+  - name: "IRONMAN Hamburg"
+    date: 2028-06-04
+    bucket: full
+    priority: A
+    target_time: "8:40"
+    planning_time: "9:07"
+    ftp_w: 265
+    target_swim: "1:07"
+    stretch_note: >
+      PLANNING 9:07; 8:40 is the stretch. One model run: flat 180 km, 4 m/s wind,
+      IF 0.76 on the planning 265 W FTP = 201 W NP at CdA 0.225 -> 4:51. The stretch
+      4:30 needs 209 W (IF 0.76 on the stretch 275 W FTP) AND CdA 0.185. Qualifying:
+      on 2026 numbers the M40-44 line was a ~9:21 finish, so the planning 9:07 is
+      inside it -- race the plan, not the stretch.
+    compare_to_date: 2027-09-05
+    compare_note: >
+      vs Malbork 2027 planning 9:17: ~5 min from a flatter course at the same IF, ~4
+      from FTP 258 -> 265 and a second winter of run threshold. The Alster in early
+      June is 16-19 C, so none of this is a warm-water gain.
+    splits:
+      - { leg: "Swim 3.8 km", target: "1:07:00", planning: "1:10:00", detail: "Wetsuit. Cold too: same exposure protocol" }
+      - { leg: "T1",          target: "2:15",  planning: "2:30",  detail: "" }
+      - { leg: "Bike 180 km", target: "4:30:15", planning: "4:51:26", detail: "201 W NP (IF 0.76 on 265), CdA 0.225, flat. Stretch: 209 W and CdA 0.185" }
+      - { leg: "T2",          target: "1:30",  planning: "1:30",  detail: "" }
+      - { leg: "Run 42.2 km", target: "2:59:00", planning: "3:02:00", detail: "4:19/km planning, 4:15 stretch. First 10 km 10 s/km slower" }
+
+  - name: "IRONMAN World Championship, Kona (Oct 2028, date TBC)"
+    date: 2028-10-14
+    bucket: full
+    priority: B
+    target_time: "9:10"
+    target_swim: "1:10"
+    stretch_note: >
+      Slot-dependent and beyond this plan's horizon (the plan ends at Hamburg). Kona
+      is the only branch: 8 weeks of sauna plus 10-14 days on the island, booked in
+      June 2028. Hamburg fitness is worth ~9:10 in Hawaii, not Hamburg's time.
+    compare_to_date: 2028-06-04
+    compare_note: >
+      vs Hamburg. Slower bike in the Queen K wind, much slower run in 30 C and 80%
+      humidity, non-wetsuit swim.
+    splits:
+      - { leg: "Swim 3.8 km", target: "1:10:00", detail: "Non-wetsuit" }
+      - { leg: "T1",          target: "3:00",  detail: "" }
+      - { leg: "Bike 180 km", target: "4:50:00", detail: "~185 W NP, not Hamburg watts" }
+      - { leg: "T2",          target: "2:00",  detail: "" }
+      - { leg: "Run 42.2 km", target: "3:05:00", detail: "The heat decides; walk the aid stations if it wins" }
+
+risk_note: >
+  (1) The stretch targets rest on an unmeasured CdA ~0.03-0.04 below every disc fit:
+  the autumn aero test decides whether 8:50 is a target or a hope. (2) Fueling is
+  the number-one race risk; the 5 h gut validation in weeks 46-48 and the mandatory
+  in-race rescue exist because of Wolsztyn. (3) Mechanical: a Di2 failure already
+  ended one A race. (4) Cold-water swim: 1:20-1:22 demonstrated at Malbork. (5) Run
+  durability: these paces sit on 35-45 km/week of history, so tissue before speed.
+  (6) June 2027 density: Sieraków, the HM and Mietków inside 22 days; Mietków is
+  kept with no target and a bike cap, so its race-day form sits above the C band.
+  (7) Qualification: Hamburg is the single attempt (athlete decision).
+
+trajectory_note:
+  - "Full: 10:27:00 (Malbork 2025, official) -> DNF (2026, mechanical) -> 9:17 planning / 8:50 stretch at Malbork 2027 -> 9:07 planning / 8:40 stretch at Hamburg 2028."
+  - "Half: 4:45:56 Sieraków (official) / 4:24:05 Syców (2026) -> 4:38:21 Wolsztyn (GI failure) -> 4:25 / 4:21 planning (4:20 / 4:15 stretch) in 2027."
+  - "Run: 1:18:00 half in 2026 (near-maximal, 7 days after a 70.3) -> 10 km measurement Nov 2026 -> 1:17 planning / 1:15 stretch HM in 2027 (training race)."
+  - "FTP (4iiii): 250 W planning now (255 stretch) -> 258 W by Malbork (265) -> 265 W by Hamburg (275)."
+  - "CdA (effective, corrected model): 0.245 Malbork 2025 no aero; 0.220-0.239 disc 70.3s in 2026 -> 0.232 / 0.225 planning; 0.194 / 0.185 needed for the stretch targets."
+
+weeks:
+  - index: 1
+    start: 2026-09-07
+    phase: build
+    focus: "No IM unload (DNF at 45 km). Bike watts corrected to the 4iiii scale."
+    type: explicit
+    sessions:
+      - { day: 0, sport: run,  name: "Run threshold (completed)", intensity: moderate, minutes: 58, flags: ["monday-exception: already executed"], desc: "14.6 km done Mon AM." }
+      - { day: 0, sport: bike, name: "Bike anaerobic (Kickr, completed)", intensity: hard, minutes: 80, flags: ["monday-exception: already executed"], desc: "2x17x10s @ 450 W Kickr, full recoveries, rest Z2." }
+      - { day: 1, sport: swim, name: "Swim aerobic endurance 4300m", intensity: easy, minutes: 74, desc: "4300m pool, ~1:43/100 moving." }
+      - { day: 2, sport: run,  name: "Run easy", intensity: easy, minutes: 40, desc: "Z2 conversational." }
+      - { day: 3, sport: swim, name: "Swim aerobic (completed)", intensity: easy, minutes: 32, desc: "2000m done Thu AM." }
+      - { day: 3, sport: run,  name: "Run tempo (completed)", intensity: moderate, minutes: 44, desc: "10.8 km total; main set 24' @ 3:45/km." }
+      - { day: 4, sport: swim, name: "Swim easy", intensity: easy, minutes: 40, desc: "2000m feel. Third swim." }
+      - { day: 4, sport: bike, name: "Easy spin (race bike)", intensity: easy, minutes: 50, desc: "Z2. Confirm a shifting race bike." }
+      - { day: 5, sport: bike, name: "70.3 brick ride", intensity: moderate, minutes: 90, desc: "TT bike in aero. 2x20' @ 202-210 W 4iiii (not the 225-230 W originally written, which was unraceable). Fuel 70 g/h." }
+      - { day: 5, sport: run,  name: "Brick run off bike", intensity: moderate, minutes: 30, brick: true, desc: "Off the bike @ 4:04-4:10/km. First 10' slower." }
+  - index: 2
+    start: 2026-09-14
+    phase: taper
+    focus: "Mini-taper -> GREATMAN Wolsztyn 70.3 (RACED 4:38:21)"
+    type: explicit
+    sessions:
+      - { day: 0, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 40, flags: ["monday-exception: already executed"], desc: "Feel for the water. 6-8x50 build." }
+      - { day: 1, sport: bike, name: "Bike race-power touches", intensity: moderate, minutes: 55, desc: "3x8' @ 202-210 W 4iiii on the race bike. Zero-offset PM." }
+      - { day: 2, sport: swim, name: "Swim race-pace", intensity: moderate, minutes: 30, desc: "8x100 @ CSS, long rest." }
+      - { day: 2, sport: run,  name: "Run easy + strides", intensity: easy, minutes: 35, desc: "Z2 + 6x20s." }
+      - { day: 3, sport: bike, name: "Easy spin", intensity: easy, minutes: 35, desc: "Legs open." }
+      - { day: 4, sport: run,  name: "Shakeout", intensity: easy, minutes: 15, desc: "10-15' + 4 strides." }
+      - { day: 5, sport: other, name: "RACE: GREATMAN Wolsztyn 70.3 (RACED 4:38:21)", intensity: moderate, minutes: 278, category: race, tss: 345, desc: "Official 4:38:21. Device legs: swim 36:41 / T1 2:37 / bike 2:22:13 @ 208 W NP (IF 0.83 on the planning 250 W FTP) / T2 2:01 / run 1:34:48 elapsed. GI distress after gels on the bike wrecked km 3-18 of the run (HR fell to 137 with pace). TSS 345 as recorded." }
+      - { day: 6, sport: other, name: "Walk", intensity: easy, minutes: 20, desc: "Flush." }
+  - index: 3
+    start: 2026-09-21
+    phase: transition
+    is_recovery: true
+    focus: "Unload after Wolsztyn: easy aerobic, review the fueling failure"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim easy", intensity: easy, minutes: 35, desc: "Frequency only. Technique, no sets." }
+      - { day: 2, sport: bike, name: "Easy spin", intensity: easy, minutes: 50, desc: "Z2 flush." }
+      - { day: 3, sport: run,  name: "Run easy", intensity: easy, minutes: 40, desc: "Z2. Check the gut on a normal breakfast." }
+      - { day: 4, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 40, desc: "" }
+      - { day: 5, sport: bike, name: "Easy ride", intensity: easy, minutes: 60, desc: "Scenic Z2." }
+      - { day: 6, sport: run,  name: "Run easy", intensity: easy, minutes: 35, desc: "Then the autumn base block starts, with a rest day every Monday." }
+  - index: 4
+    start: 2026-09-28
+    phase: base
+    focus: "Autumn base 1: strength + swim technique + run threshold intro. FTP test done (249 W); aero test window opens"
+    type: microcycle
+    microcycle: { target_h: 9.4, key: moderate, long_ride_h: 2.5, long_run_h: 1.4, brick_run_h: 0.5, fuel_g_per_h: "60", ow_swim: true, bike_tempo_easy: true, run_key: "Threshold intro 5x5' @ 3:33-3:37/km off 90s jog (98-100% of the planning 3:35 threshold). Opens the 10 km block; hills wait until after the race.", run_easy: "Z2 + 6x20s FLAT strides. Uphill work returns after the 10 km.", bike_key: "FTP TEST DONE 29 Sep 2026, indoors on the KICKR (resistance mode, paced off the 4iiii): best 20 min 261.7 W, so FTP 249 W. It confirms the planning 250 W; the 255 W stretch reading is not supported. Opened near 272 W and faded toward 250 W -- start nearer 262 W next time." }
+  - index: 5
+    start: 2026-10-05
+    phase: base
+    focus: "2028-b: bike VO2 Tuesday, controlled 4x8 Wednesday, one run VO2 Friday as an absorption test. Sunday long run 90 min. Saturday long ride is 2 hours. CSS test waits until next Tuesday"
+    type: explicit
+    sessions:
+      - { day: 1, sport: bike, name: "Bike VO2", intensity: hard, minutes: 70, desc: "VO2 5x4' @ 270-288 W, equal rest. First rep is the slowest." }
+      - { day: 1, sport: swim, name: "Swim easy", intensity: easy, minutes: 40, desc: "After the VO2. Easy technique and steady swimming, no set." }
+      - { day: 2, sport: run, name: "Run key set", intensity: moderate, minutes: 55, desc: "4x8' @ 3:37-3:40/km off 2' jog. Heart-rate ceiling 168. First rep is the slowest. Slower than 10 km pace on purpose." }
+      - { day: 2, sport: other, name: "Strength (heavy)", intensity: easy, minutes: 45, desc: "Heavy, low volume. Posterior chain, calf and core. Stop short of fatigue." }
+      - { day: 3, sport: bike, name: "Bike Z2", intensity: easy, minutes: 55, desc: "Aerobic Z2, about 150 W. The 3x12 set is Friday next week." }
+      - { day: 3, sport: run, name: "Run easy + strides", intensity: easy, minutes: 50, desc: "Z2, heart rate at or under 145. Plus 6x20s flat strides. Uphill strides wait until after the 10 km." }
+      - { day: 4, sport: swim, name: "Swim aerobic + technique", intensity: easy, minutes: 45, desc: "About 2.5 km. Drills, then steady. No fast 100s. Easy, alongside the run VO2." }
+      - { day: 4, sport: run, name: "Run VO2", intensity: hard, minutes: 55, desc: "10x2' @ 3:25/km off 2' jog. First rep @ 3:28/km. Stop the set if a rep reaches heart rate 170 before the end. One absorption test, not a weekly session." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 120, desc: "Steady Z2, about 150 W on the 4iiii. Fuel 60 g/h. TT bike outdoors if the roads are dry." }
+      - { day: 5, sport: run, name: "Brick run off bike", intensity: easy, minutes: 20, brick: true, desc: "Easy off the bike. Cap 4:30/km or heart rate 145, whichever comes first." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 90, desc: "Z2, heart rate at or under 145. 90 minutes. Cap 18 km." }
+  - index: 6
+    start: 2026-10-12
+    phase: base
+    focus: "2028-b: CSS test Tuesday, then easy bike. Bike threshold Friday. Run cap 54 km. Cold-water habituation starts (6 immersions across weeks 6-8)"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim CSS test", intensity: moderate, minutes: 50, desc: "400 m then 200 m. Even, or slightly faster on the second half of the 400. First 100 no faster than the average you are aiming at. Warm-up 400 easy plus 4x50 build." }
+      - { day: 1, sport: bike, name: "Bike easy", intensity: easy, minutes: 45, desc: "Z2 only, after the CSS test. The VO2 set was last Tuesday." }
+      - { day: 2, sport: run, name: "Run key set", intensity: moderate, minutes: 55, desc: "4x8' @ 3:37-3:40/km off 2' jog. Heart-rate ceiling 168. First rep is the slowest. Slower than 10 km pace on purpose." }
+      - { day: 2, sport: other, name: "Strength (heavy)", intensity: easy, minutes: 40, desc: "Heavy, low volume. Posterior chain, calf and core." }
+      - { day: 3, sport: swim, name: "Swim aerobic + technique", intensity: easy, minutes: 45, desc: "Drills plus steady 2.5 km." }
+      - { day: 3, sport: run, name: "Run easy + strides", intensity: easy, minutes: 75, desc: "Z2, heart rate at or under 145. Plus 6x20s flat strides. Uphill strides wait until after the 10 km." }
+      - { day: 4, sport: bike, name: "Bike threshold", intensity: moderate, minutes: 75, desc: "3x12' @ 232-240 W off 4' easy. First rep is the slowest, from 232 W." }
+      - { day: 4, sport: run, name: "Run easy", intensity: easy, minutes: 30, desc: "Z2, heart rate at or under 145." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 120, desc: "Steady Z2, about 150 W on the 4iiii. Fuel 60 g/h. AERO TEST (Chung virtual elevation) on the first calm day in weeks 6-10, in place of that ride: closed loop, at least 6 laps, two speeds, race kit, same tyres and pressures." }
+      - { day: 5, sport: run, name: "Brick run off bike", intensity: easy, minutes: 25, brick: true, desc: "Easy off the bike. Cap 4:30/km or heart rate 145, whichever comes first." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 80, desc: "Z2, heart rate at or under 145. Cap 16 km." }
+      - { day: 2, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+      - { day: 4, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 7
+    start: 2026-10-19
+    phase: base
+    focus: "2028-b: about 12.5 h, run cap 58 km. Bike 3x12 lands here. 10 km pace is 3x10, 18 days out"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 55, desc: "Steady 3 km, plus drills." }
+      - { day: 1, sport: bike, name: "Bike threshold", intensity: moderate, minutes: 75, desc: "3x12' @ 232-240 W off 4' easy. First rep is the slowest. If the previous hard run went hot, or resting heart rate is still 41 or higher, replace this with Z2 and move the set a week later." }
+      - { day: 2, sport: run, name: "Run key set", intensity: moderate, minutes: 55, desc: "3x10' @ 3:33-3:37/km off 3' jog. 10 km pace, split up, 18 days before the race. Heart-rate ceiling 168. First rep is the slowest." }
+      - { day: 2, sport: swim, name: "Swim aerobic + technique", intensity: easy, minutes: 50, desc: "Drills plus steady." }
+      - { day: 3, sport: other, name: "Strength (heavy)", intensity: easy, minutes: 40, desc: "Heavy, low volume. Posterior chain, calf and core." }
+      - { day: 3, sport: run, name: "Run easy + strides", intensity: easy, minutes: 75, desc: "Z2, heart rate at or under 145. Plus 6x20s flat strides. Uphill strides wait until after the 10 km." }
+      - { day: 4, sport: bike, name: "Bike Z2", intensity: easy, minutes: 95, desc: "Aerobic Z2, about 150 W. Fuel 60 g/h." }
+      - { day: 4, sport: run, name: "Run easy", intensity: easy, minutes: 30, desc: "Z2, heart rate at or under 145." }
+      - { day: 4, sport: swim, name: "Swim pull", intensity: easy, minutes: 40, desc: "Pull buoy, steady. Fourth swim." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 110, desc: "Steady Z2, about 150 W on the 4iiii. Fuel 60 g/h. AERO TEST (Chung virtual elevation) on the first calm day in weeks 6-10, in place of that ride: closed loop, at least 6 laps, two speeds, race kit, same tyres and pressures." }
+      - { day: 5, sport: run, name: "Brick run off bike", intensity: easy, minutes: 25, brick: true, desc: "Easy off the bike. Cap 4:30/km or heart rate 145, whichever comes first." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 90, desc: "Z2, heart rate at or under 145. Cap 17 km." }
+      - { day: 2, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 8
+    start: 2026-10-26
+    phase: base
+    is_recovery: true
+    focus: "2028-b recovery before the 10 km taper. Week 4 already used a load slot, so a fifth straight load week is not allowed"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim easy", intensity: easy, minutes: 40, desc: "Easy. Recovery week." }
+      - { day: 1, sport: bike, name: "Bike easy", intensity: easy, minutes: 50, desc: "Z2. No key set." }
+      - { day: 2, sport: bike, name: "Bike easy", intensity: easy, minutes: 50, desc: "Z2 only." }
+      - { day: 2, sport: swim, name: "Swim easy", intensity: easy, minutes: 40, desc: "Easy." }
+      - { day: 3, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 90, desc: "Shorter long ride, Z2. Fuel 60 g/h. Moved from Saturday: no bike this weekend." }
+      - { day: 3, sport: run, name: "Brick run off bike", intensity: easy, minutes: 20, brick: true, desc: "Easy off the bike. Cap 4:30/km or heart rate 145, whichever comes first." }
+      - { day: 4, sport: run, name: "Run easy + strides", intensity: easy, minutes: 40, desc: "Z2, heart rate at or under 145. Plus 6x20s flat strides. Uphill strides wait until after the 10 km." }
+      - { day: 5, sport: run, name: "Run easy", intensity: easy, minutes: 35, desc: "Z2, heart rate at or under 145." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 55, desc: "Z2, heart rate at or under 145. Cap 12 km." }
+      - { day: 4, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 9
+    start: 2026-11-02
+    phase: base
+    focus: "2028-b: no 10 km on 8 Nov (Web Summit). Bike threshold Tuesday, run threshold Wednesday, then extra bike before the trip. Long run Sunday before the flight"
+    type: explicit
+    sessions:
+      - { day: 1, sport: bike, name: "Bike threshold", intensity: moderate, minutes: 70, desc: "2x12' @ 232 W off 4' easy. Done Tuesday 3 Nov." }
+      - { day: 1, sport: swim, name: "Swim easy", intensity: easy, minutes: 40, desc: "Easy technique, no set." }
+      - { day: 2, sport: run, name: "Run key set", intensity: moderate, minutes: 60, desc: "2x15' @ 3:33/km off 3' jog. Replaces the race opener. First rep is the slowest. Pace and feel lead, heart rate is information." }
+      - { day: 2, sport: swim, name: "Swim aerobic + technique", intensity: easy, minutes: 45, desc: "Drills plus steady 2.5 km." }
+      - { day: 3, sport: bike, name: "Bike Z2", intensity: easy, minutes: 110, desc: "Steady Z2, about 150 W on the 4iiii. Fuel 60 g/h. Extra bike before Web Summit." }
+      - { day: 3, sport: run, name: "Run easy + strides", intensity: easy, minutes: 40, desc: "Z2, heart rate at or under 145. Plus 6x20s flat strides." }
+      - { day: 4, sport: bike, name: "Bike Z2", intensity: easy, minutes: 90, desc: "Aerobic Z2, about 150 W." }
+      - { day: 4, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 45, desc: "Steady 2.5 km." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 195, desc: "Steady Z2, about 150 W on the 4iiii. Fuel 60 g/h. Last ride before Web Summit." }
+      - { day: 5, sport: run, name: "Brick run off bike", intensity: easy, minutes: 25, brick: true, desc: "Easy off the bike. Cap 4:30/km or heart rate 145, whichever comes first." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 90, desc: "Z2, heart rate at or under 145. Cap 18 km. Before the flight." }
+  - index: 10
+    start: 2026-11-09
+    phase: base
+    is_recovery: true
+    focus: "2028-b: Web Summit through Friday. VO2 Wednesday, then a gut infection that night, so Thursday's run comes off. That 40 min goes to the weekend: brick 30 min, long run 90 min. Lighter by design"
+    type: explicit
+    sessions:
+      - { day: 1, sport: run, name: "Run easy + strides", intensity: easy, minutes: 45, desc: "Z2, heart rate at or under 145. Lisbon. Plus 6x20s flat strides." }
+      - { day: 2, sport: run, name: "Run VO2", intensity: hard, minutes: 55, desc: "10x2' @ 3:25/km off 2' jog. First rep @ 3:28/km. The 9 Oct set. Lisbon." }
+      - { day: 4, sport: bike, name: "Bike easy", intensity: easy, minutes: 45, desc: "Z2, about 150 W, Friday evening at home if travel allows. Skip it otherwise." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 165, desc: "Steady Z2, about 150 W on the 4iiii. Fuel 60 g/h. First long ride after Web Summit." }
+      - { day: 5, sport: run, name: "Brick run off bike", intensity: easy, minutes: 30, brick: true, desc: "Easy off the bike. Cap 4:30/km or heart rate 145, whichever comes first. 30 min. Part of Thursday's run moved here." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 90, desc: "Z2, heart rate at or under 145. Cap 19 km. The rest of Thursday's run." }
+  - index: 11
+    start: 2026-11-16
+    phase: base
+    focus: "2028-b: 13.3 h, run cap 60 km. Gut training to 70 g/h"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 55, desc: "Steady 3 km." }
+      - { day: 1, sport: bike, name: "Bike sweet spot", intensity: moderate, minutes: 70, desc: "2x20' @ 212-225 W off 5' easy." }
+      - { day: 2, sport: run, name: "Run key set", intensity: moderate, minutes: 55, desc: "3x10' @ 3:33-3:37/km off 3' jog. First rep is the slowest. Pace and feel lead, heart rate is information." }
+      - { day: 2, sport: other, name: "Strength (heavy)", intensity: easy, minutes: 40, desc: "Heavy, low volume." }
+      - { day: 3, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 50, desc: "Steady." }
+      - { day: 3, sport: run, name: "Run easy + strides", intensity: easy, minutes: 70, desc: "Z2, heart rate at or under 145. Plus 6x20s uphill strides, walk down. Tissue work in place of the hill session." }
+      - { day: 4, sport: bike, name: "Bike Z2", intensity: easy, minutes: 80, desc: "Aerobic. Fuel 70 g/h." }
+      - { day: 4, sport: swim, name: "Swim pull", intensity: easy, minutes: 40, desc: "Pull buoy." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 225, desc: "Steady Z2. Fuel 70 g/h. Three and three quarter hours." }
+      - { day: 5, sport: run, name: "Brick run off bike", intensity: easy, minutes: 30, brick: true, desc: "Easy off the bike. Cap 4:30/km or heart rate 145, whichever comes first." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 90, desc: "Z2, heart rate at or under 145. Cap 18 km." }
+  - index: 12
+    start: 2026-11-23
+    phase: base
+    focus: "2028-b: 14.1 h, run cap 62 km. Gut training to 75 g/h"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 55, desc: "Steady 3 km." }
+      - { day: 1, sport: bike, name: "Bike threshold", intensity: moderate, minutes: 75, desc: "3x12' @ 232-240 W off 4' easy. First rep is the slowest. If the previous hard run went hot, or resting heart rate is still 41 or higher, replace this with Z2 and move the set a week later." }
+      - { day: 2, sport: run, name: "Run VO2", intensity: hard, minutes: 50, desc: "6x3' @ 3:22-3:25/km off 2' jog. First rep is the slowest." }
+      - { day: 2, sport: other, name: "Strength (heavy)", intensity: easy, minutes: 45, desc: "Heavy, low volume." }
+      - { day: 3, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 55, desc: "Steady." }
+      - { day: 3, sport: run, name: "Run easy + strides", intensity: easy, minutes: 75, desc: "Z2, heart rate at or under 145. Plus 6x20s uphill strides, walk down. Tissue work in place of the hill session." }
+      - { day: 4, sport: bike, name: "Bike Z2", intensity: easy, minutes: 90, desc: "Aerobic. Fuel 75 g/h." }
+      - { day: 4, sport: run, name: "Run easy", intensity: easy, minutes: 35, desc: "Z2, heart rate at or under 145." }
+      - { day: 4, sport: swim, name: "Swim pull", intensity: easy, minutes: 40, desc: "Pull buoy." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 210, desc: "Steady Z2. Fuel 75 g/h." }
+      - { day: 5, sport: run, name: "Brick run off bike", intensity: easy, minutes: 25, brick: true, desc: "Easy off the bike. Cap 4:30/km or heart rate 145, whichever comes first." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 90, desc: "Z2, heart rate at or under 145. Cap 18 km." }
+  - index: 13
+    start: 2026-11-30
+    phase: base
+    focus: "2028-b: 14.8 h, run cap 65 km. Long run still inside 30% of the week"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 55, desc: "Steady 3 km." }
+      - { day: 1, sport: bike, name: "Bike VO2", intensity: hard, minutes: 70, desc: "VO2 5x4' @ 270-288 W, equal rest. First rep is the slowest." }
+      - { day: 2, sport: run, name: "Run key set", intensity: moderate, minutes: 60, desc: "3x12' @ 3:33-3:37/km off 3' jog. First rep is the slowest. Pace and feel lead, heart rate is information." }
+      - { day: 2, sport: other, name: "Strength (heavy)", intensity: easy, minutes: 45, desc: "Heavy, low volume." }
+      - { day: 3, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 55, desc: "Steady." }
+      - { day: 3, sport: run, name: "Run easy + strides", intensity: easy, minutes: 75, desc: "Z2, heart rate at or under 145. Plus 6x20s uphill strides, walk down. Tissue work in place of the hill session." }
+      - { day: 4, sport: bike, name: "Bike Z2", intensity: easy, minutes: 90, desc: "Aerobic. Fuel 75 g/h." }
+      - { day: 4, sport: run, name: "Run easy", intensity: easy, minutes: 40, desc: "Z2, heart rate at or under 145." }
+      - { day: 4, sport: swim, name: "Swim pull", intensity: easy, minutes: 40, desc: "Pull buoy." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 240, desc: "Steady Z2, four hours. Fuel 75 g/h." }
+      - { day: 5, sport: run, name: "Brick run off bike", intensity: easy, minutes: 30, brick: true, desc: "Easy off the bike. Cap 4:30/km or heart rate 145, whichever comes first." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 100, desc: "Z2, heart rate at or under 145. Cap 19 km. About two hours." }
+  - index: 14
+    start: 2026-12-07
+    phase: base
+    is_recovery: true
+    focus: "2028-b recovery: about 40% lighter. The readiness log is not running yet, so this valley stays on the calendar"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim easy", intensity: easy, minutes: 40, desc: "Easy. Recovery week." }
+      - { day: 1, sport: bike, name: "Bike easy", intensity: easy, minutes: 60, desc: "Z2. A few 1' pickups late if the legs are good. No key set." }
+      - { day: 2, sport: run, name: "Run easy + strides", intensity: easy, minutes: 45, desc: "Z2, heart rate at or under 145. 6x20s flat strides. No hills, no threshold." }
+      - { day: 3, sport: swim, name: "Swim easy", intensity: easy, minutes: 40, desc: "Easy." }
+      - { day: 3, sport: run, name: "Run easy", intensity: easy, minutes: 40, desc: "Z2, heart rate at or under 145." }
+      - { day: 4, sport: bike, name: "Bike easy", intensity: easy, minutes: 70, desc: "Z2 only." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 120, desc: "Shorter long ride, Z2. Fuel 70 g/h." }
+      - { day: 5, sport: run, name: "Brick run off bike", intensity: easy, minutes: 20, brick: true, desc: "Easy off the bike. Cap 4:30/km or heart rate 145, whichever comes first." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 70, desc: "Z2, heart rate at or under 145. Cap 14 km." }
+      - { day: 6, sport: other, name: "Strength (core)", intensity: easy, minutes: 30, desc: "Core and mobility. Light." }
+  - index: 15
+    start: 2026-12-14
+    phase: base
+    focus: "2028-b: back to 15.0 h, run cap 68 km. Bike threshold 3x15"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 55, desc: "Steady 3 km." }
+      - { day: 1, sport: bike, name: "Bike threshold", intensity: moderate, minutes: 80, desc: "3x15' @ 232-240 W off 4' easy. First rep is the slowest." }
+      - { day: 2, sport: run, name: "Run VO2", intensity: hard, minutes: 55, desc: "5x4' @ 3:25/km off 3' jog. First rep is the slowest." }
+      - { day: 2, sport: other, name: "Strength (heavy)", intensity: easy, minutes: 45, desc: "Heavy, low volume." }
+      - { day: 3, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 55, desc: "Steady." }
+      - { day: 3, sport: run, name: "Run easy + strides", intensity: easy, minutes: 75, desc: "Z2, heart rate at or under 145. Plus 6x20s uphill strides, walk down. Tissue work in place of the hill session." }
+      - { day: 4, sport: bike, name: "Bike Z2", intensity: easy, minutes: 90, desc: "Aerobic. Fuel 75 g/h." }
+      - { day: 4, sport: run, name: "Run easy", intensity: easy, minutes: 40, desc: "Z2, heart rate at or under 145." }
+      - { day: 4, sport: swim, name: "Swim pull", intensity: easy, minutes: 40, desc: "Pull buoy." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 240, desc: "Steady Z2, four hours. Fuel 75 g/h." }
+      - { day: 5, sport: run, name: "Brick run off bike", intensity: easy, minutes: 30, brick: true, desc: "Easy off the bike. Cap 4:30/km or heart rate 145, whichever comes first." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 100, desc: "Z2, heart rate at or under 145. Cap 20 km." }
+  - index: 16
+    start: 2026-12-21
+    phase: transition
+    focus: "Holiday week: about 11 h of unstructured Z2. Skip the long ride if you are actually away"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim easy", intensity: easy, minutes: 45, desc: "Holiday. Easy." }
+      - { day: 1, sport: bike, name: "Bike easy", intensity: easy, minutes: 40, desc: "Z2, only if the day is free." }
+      - { day: 2, sport: bike, name: "Bike easy", intensity: easy, minutes: 120, desc: "Z2, unstructured. Stop when the day says so." }
+      - { day: 2, sport: run, name: "Run easy", intensity: easy, minutes: 50, desc: "Z2, heart rate at or under 145." }
+      - { day: 3, sport: swim, name: "Swim easy", intensity: easy, minutes: 40, desc: "Easy." }
+      - { day: 4, sport: swim, name: "Swim easy", intensity: easy, minutes: 45, desc: "Third swim." }
+      - { day: 4, sport: run, name: "Run easy", intensity: easy, minutes: 50, desc: "Z2, heart rate at or under 145." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 180, desc: "Z2 if you want the long ride. Fuel 70 g/h. Skip it if the week is a real holiday." }
+      - { day: 6, sport: run, name: "Long run (Z2)", intensity: easy, minutes: 90, desc: "Z2, heart rate at or under 145. Cap 18 km." }
+  - index: 17
+    start: 2026-12-28
+    phase: base
+    focus: "Winter threshold 1: FTP & CSS retest, re-derive all watts"
+    type: microcycle
+    microcycle: { target_h: 14.0, key: moderate, long_ride_h: 2.8, long_run_h: 1.6, brick_run_h: 0.5, fuel_g_per_h: "75", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough.", bike_key: "FTP TEST, INDOORS, same setup every time: KICKR in resistance or passive mode, NOT ERG, paced off the 4iiii. Warm-up 10' easy, 10' Z2, 3x1' high cadence, 2x30s at test power, 5' Z2, 5' Z1, then the 20-min TT. FTP = 20-min average x 0.95. No ramp tests. Re-derive every watt from the result." }
+  - index: 18
+    start: 2027-01-04
+    phase: base
+    focus: "Winter threshold 1: run threshold replaces hills"
+    type: microcycle
+    microcycle: { target_h: 14.8, key: moderate, long_ride_h: 3.0, long_run_h: 1.7, brick_run_h: 0.5, fuel_g_per_h: "75", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 19
+    start: 2027-01-11
+    phase: base
+    focus: "Winter threshold 1"
+    type: microcycle
+    microcycle: { target_h: 15.4, key: moderate, long_ride_h: 3.0, long_run_h: 1.8, brick_run_h: 0.5, fuel_g_per_h: "75", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 20
+    start: 2027-01-18
+    phase: base
+    focus: "Winter threshold 1"
+    type: microcycle
+    microcycle: { target_h: 15.8, key: moderate, long_ride_h: 3.2, long_run_h: 1.8, brick_run_h: 0.5, fuel_g_per_h: "75", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 21
+    start: 2027-01-25
+    phase: base
+    is_recovery: true
+    focus: "Recovery valley: 10 km run TT at the end of the week"
+    type: microcycle
+    microcycle: { target_h: 8.4, key: easy, long_ride_h: 2.0, long_run_h: 1.0, brick_run_h: 0.3, fuel_g_per_h: "75" }
+  - index: 22
+    start: 2027-02-01
+    phase: base
+    focus: "Winter threshold 2"
+    type: microcycle
+    microcycle: { target_h: 15.4, key: moderate, long_ride_h: 3.0, long_run_h: 1.8, brick_run_h: 0.5, fuel_g_per_h: "75", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 23
+    start: 2027-02-08
+    phase: base
+    focus: "Winter threshold 2"
+    type: microcycle
+    microcycle: { target_h: 16.0, key: moderate, long_ride_h: 3.2, long_run_h: 1.9, brick_run_h: 0.5, fuel_g_per_h: "75", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 24
+    start: 2027-02-15
+    phase: base
+    focus: "Winter threshold 2"
+    type: microcycle
+    microcycle: { target_h: 16.4, key: moderate, long_ride_h: 3.3, long_run_h: 1.9, brick_run_h: 0.5, fuel_g_per_h: "75", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 25
+    start: 2027-02-22
+    phase: base
+    focus: "Winter threshold 2: gut training to 85 g/h"
+    type: microcycle
+    microcycle: { target_h: 16.8, key: moderate, long_ride_h: 3.5, long_run_h: 1.9, brick_run_h: 0.5, fuel_g_per_h: "85", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 26
+    start: 2027-03-01
+    phase: base
+    is_recovery: true
+    focus: "Recovery valley"
+    type: microcycle
+    microcycle: { target_h: 9.0, key: easy, long_ride_h: 2.2, long_run_h: 1.1, brick_run_h: 0.3, fuel_g_per_h: "80" }
+  - index: 27
+    start: 2027-03-08
+    phase: base
+    focus: "Spring volume 1: OUTDOOR FTP cross-check + CSS retest"
+    type: microcycle
+    microcycle: { target_h: 16.0, key: moderate, long_ride_h: 3.5, long_run_h: 1.9, brick_run_h: 0.6, fuel_g_per_h: "85", bike_tempo_easy: true, run_key: "Threshold 4x2km @ 3:35-3:38/km off 400m jog.", long_run_finish: "last 20' @ 3:55/km when fresh enough.", bike_key: "FTP TEST, OUTDOORS -- the once-a-year cross-check of the indoor series, not part of its trend. 20-min TT on the usual road segment, 4iiii, the same warm-up as the indoor tests. FTP = 20-min average x 0.95. If the roads are still winter, move it to the first rideable week rather than replacing it with an indoor test." }
+  - index: 28
+    start: 2027-03-15
+    phase: base
+    focus: "Spring volume 1: long run to 2h"
+    type: microcycle
+    microcycle: { target_h: 16.6, key: moderate, long_ride_h: 3.6, long_run_h: 2.0, brick_run_h: 0.6, fuel_g_per_h: "85", bike_tempo_easy: true, run_key: "Threshold 4x2km @ 3:35-3:38/km off 400m jog.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+  - index: 29
+    start: 2027-03-22
+    phase: base
+    focus: "Spring volume 1"
+    type: microcycle
+    microcycle: { target_h: 17.0, key: moderate, long_ride_h: 3.8, long_run_h: 2.0, brick_run_h: 0.6, fuel_g_per_h: "85", bike_tempo_easy: true, run_key: "Threshold 4x2km @ 3:35-3:38/km off 400m jog.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+  - index: 30
+    start: 2027-03-29
+    phase: base
+    focus: "Spring volume 1: body-comp checkpoint 71 kg"
+    type: microcycle
+    microcycle: { target_h: 17.4, key: moderate, long_ride_h: 4.0, long_run_h: 2.1, brick_run_h: 0.6, fuel_g_per_h: "85", bike_tempo_easy: true, run_key: "Threshold 4x2km @ 3:35-3:38/km off 400m jog.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+  - index: 31
+    start: 2027-04-05
+    phase: base
+    is_recovery: true
+    focus: "Recovery valley: 10 km run TT (the pre-Malbork run diagnostic); cold-shock block (Apr)"
+    type: microcycle
+    microcycle: { target_h: 9.2, key: easy, long_ride_h: 2.2, long_run_h: 1.1, brick_run_h: 0.3, fuel_g_per_h: "80" }
+    extra_sessions:
+      - { day: 2, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+      - { day: 4, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 32
+    start: 2027-04-12
+    phase: build
+    focus: "70.3 specific 1: race-power bike, half-pace bricks"
+    type: microcycle
+    microcycle: { target_h: 15.7, key: moderate, long_ride_h: 3.5, long_run_h: 2.0, brick_run_h: 0.75, fuel_g_per_h: "85", bike_tempo_easy: true, half_focus: true, long_ride_blocks: "3x20' @ 205-212 W", run_key: "Half-pace 3x4km @ 3:50-3:55/km off 3' jog. Sieraków/Syców run pace.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+    extra_sessions:
+      - { day: 2, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+      - { day: 4, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 33
+    start: 2027-04-19
+    phase: build
+    focus: "70.3 specific 1"
+    type: microcycle
+    microcycle: { target_h: 16.1, key: moderate, long_ride_h: 3.6, long_run_h: 2.0, brick_run_h: 0.75, fuel_g_per_h: "85", ow_swim: true, bike_tempo_easy: true, half_focus: true, long_ride_blocks: "3x20' @ 205-212 W", run_key: "Half-pace 3x4km @ 3:50-3:55/km off 3' jog. Sieraków/Syców run pace.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+    extra_sessions:
+      - { day: 2, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+      - { day: 4, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 34
+    start: 2027-04-26
+    phase: build
+    focus: "70.3 specific 1: pool vs open-water 1500 m TT pair"
+    type: microcycle
+    microcycle: { target_h: 16.3, key: moderate, long_ride_h: 3.5, long_run_h: 2.0, brick_run_h: 0.75, fuel_g_per_h: "85", ow_swim: true, bike_tempo_easy: true, half_focus: true, long_ride_blocks: "2x25' @ 205-212 W", run_key: "Half-pace 3x4km @ 3:50-3:55/km off 3' jog. Sieraków/Syców run pace.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+    extra_sessions:
+      - { day: 1, sport: swim, name: "Swim 1500 m TT (POOL)", intensity: moderate, minutes: 40, desc: "Diagnostic half 1: 1500 m time trial in the pool, wetsuit off, RPE logged." }
+      - { day: 4, sport: swim, name: "Swim 1500 m TT (OPEN WATER)", intensity: moderate, minutes: 45, desc: "Diagnostic half 2: 1500 m TT in open water, wetsuit, same week, RPE and water temp logged. The gap separates cold/OW skill from sighting, wetsuit restriction, start anxiety and course length." }
+  - index: 35
+    start: 2027-05-03
+    phase: build
+    focus: "70.3 specific 1: full T1/T2 rehearsal (target T1 3:45 / T2 1:45)"
+    type: microcycle
+    microcycle: { target_h: 16.7, key: moderate, long_ride_h: 3.5, long_run_h: 2.0, brick_run_h: 0.75, fuel_g_per_h: "85", ow_swim: true, bike_tempo_easy: true, half_focus: true, long_ride_blocks: "2x30' @ 205-212 W", run_key: "Half-pace 3x4km @ 3:50-3:55/km off 3' jog. Sieraków/Syców run pace.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+  - index: 36
+    start: 2027-05-10
+    phase: build
+    is_recovery: true
+    focus: "Recovery valley"
+    type: microcycle
+    microcycle: { target_h: 9.4, key: easy, long_ride_h: 2.5, long_run_h: 1.1, brick_run_h: 0.4, fuel_g_per_h: "85", ow_swim: true }
+  - index: 37
+    start: 2027-05-17
+    phase: build
+    focus: "Last quality before Sieraków: race-sim brick Saturday"
+    type: microcycle
+    microcycle: { target_h: 15.4, key: moderate, long_ride_h: 3.5, long_run_h: 1.8, brick_run_h: 0.75, fuel_g_per_h: "85", ow_swim: true, bike_tempo_easy: true, half_focus: true, long_ride_blocks: "2x30' @ 205-212 W", run_key: "Half-pace 3x4km @ 3:50-3:55/km off 3' jog. Sieraków/Syców run pace.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+  - index: 38
+    start: 2027-05-24
+    phase: taper
+    focus: "Mini-taper -> RACE JBL Sieraków 70.3 (Sat 29 May)"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim easy + 4x50 fast", intensity: easy, minutes: 40, desc: "Openers." }
+      - { day: 1, sport: bike, name: "Bike openers", intensity: moderate, minutes: 55, desc: "3x8' @ 205-212 W 4iiii + 3x30s. Race bike, zero-offset, drivetrain serviced 3 weeks ago." }
+      - { day: 2, sport: swim, name: "Swim race-pace", intensity: moderate, minutes: 30, desc: "8x100 @ CSS, long rest." }
+      - { day: 2, sport: run,  name: "Run easy + strides", intensity: easy, minutes: 45, desc: "Z2 + 6x20s." }
+      - { day: 2, sport: bike, name: "Bike Z2", intensity: easy, minutes: 75, desc: "Aerobic. B race: hold chronic load rather than tapering into it." }
+      - { day: 3, sport: bike, name: "Easy spin + openers", intensity: easy, minutes: 50, desc: "Z2 with 3x1' at race power." }
+      - { day: 3, sport: swim, name: "Swim easy", intensity: easy, minutes: 35, desc: "Feel." }
+      - { day: 4, sport: run,  name: "Shakeout", intensity: easy, minutes: 20, desc: "15' + 4 strides." }
+      - { day: 5, sport: other, name: "RACE: JBL Sieraków 70.3", intensity: moderate, minutes: 265, category: race, desc: "Planning 4:25, stretch 4:20. Swim 35:00 / T1 4:00 (long run from the lake) / bike 2:22 @ 212 W NP cap / T2 2:00 / run 1:22 @ 3:53/km. CHO bottle 85 g/h plus water on the bike, gels fine on the run, last 30' of the bike fluid only." }
+      - { day: 6, sport: other, name: "Walk", intensity: easy, minutes: 25, desc: "Flush." }
+  - index: 39
+    start: 2027-05-31
+    phase: build
+    focus: "Post-race Mon-Wed easy, then back to load (the HM is a training race)"
+    type: microcycle
+    microcycle: { target_h: 14.5, key: moderate, long_ride_h: 3.2, long_run_h: 1.8, brick_run_h: 0.5, fuel_g_per_h: "85", ow_swim: true, run_key: "Half-pace 3x4km @ 3:50-3:55/km off 3' jog. Sieraków/Syców run pace.", long_run_finish: "last 20' @ 3:55/km when fresh enough.", easy_days: 3 }
+  - index: 40
+    start: 2027-06-07
+    phase: taper
+    focus: "Training week -> RACE Nocny Wrocław HM (Sat night, training race)"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim technique + aerobic", intensity: easy, minutes: 45, desc: "Drills + 8x100 @ CSS+5s." }
+      - { day: 1, sport: bike, name: "Bike sweet-spot", intensity: moderate, minutes: 95, desc: "2x20' @ 208-220 W 4iiii inside 95'. Full training week: the HM is a training race." }
+      - { day: 1, sport: other, name: "Strength (lower + core)", intensity: easy, minutes: 40, desc: "Early in the week: no lower-body strength the day before a half-marathon." }
+      - { day: 2, sport: run,  name: "Run openers", intensity: moderate, minutes: 45, desc: "20' Z2 + 5x2' @ 3:30-3:35/km off 90s jog." }
+      - { day: 2, sport: swim, name: "Swim threshold", intensity: moderate, minutes: 50, desc: "~2000m @ CSS." }
+      - { day: 3, sport: bike, name: "Bike Z2", intensity: easy, minutes: 110, desc: "Aerobic only." }
+      - { day: 3, sport: run,  name: "Brick run (frequency)", intensity: easy, minutes: 35, brick: true, desc: "Z2 off the bike. Fourth run of the week." }
+      - { day: 4, sport: swim, name: "Swim open water", intensity: easy, minutes: 65, desc: "Wetsuit OW 3000m: sighting every 3rd stroke, drafting on feet, buoy turns." }
+      - { day: 5, sport: run, name: "RACE: Nocny Wrocław Half Marathon", intensity: hard, minutes: 90, category: race, desc: "TRAINING RACE off no taper, 14 days after Sieraków: the result is a lower bound, not a diagnostic (that is the week-31 10 km TT). Planning 1:17 (3:39/km), stretch 1:15. Night start, cool, fast." }
+      - { day: 6, sport: run,  name: "Run easy / walk", intensity: easy, minutes: 30, desc: "Very easy shakeout." }
+  - index: 41
+    start: 2027-06-14
+    phase: taper
+    focus: "Post-HM easy -> RACE Mietków 1/4 IM (Sat, C, no target)"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim easy", intensity: easy, minutes: 40, desc: "Technique. Legs recovering from the HM." }
+      - { day: 2, sport: run,  name: "Run easy", intensity: easy, minutes: 30, desc: "Z2 only. No run quality this week: 7 days post-HM the soleus is still repairing." }
+      - { day: 2, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 35, desc: "Easy continuous." }
+      - { day: 3, sport: bike, name: "Bike Z2 + openers", intensity: moderate, minutes: 90, desc: "Z2 with 3x6' @ 205-215 W. Race bike + aero wheels." }
+      - { day: 4, sport: swim, name: "Swim open water", intensity: easy, minutes: 50, desc: "Wetsuit OW. Beach starts + buoy turns." }
+      - { day: 4, sport: run,  name: "Shakeout", intensity: easy, minutes: 20, desc: "15' + 3 strides." }
+      - { day: 5, sport: other, name: "RACE: GREATMAN Mietków 1/4 IM", intensity: moderate, minutes: 150, category: race, desc: "C-RACE, NO TIME TARGET (kept by athlete decision). Bike capped at 215 W NP, run by feel with no pace target. The risk is racing 7 days after a near-maximal half-marathon. DATE ASSUMED: if it lands on 12 Jun it collides with the HM; race the HM, skip this." }
+      - { day: 6, sport: bike, name: "Easy spin", intensity: easy, minutes: 50, desc: "Flush." }
+  - index: 42
+    start: 2027-06-21
+    phase: build
+    focus: "Post-race Mon-Wed easy, then rebuild: IM-pace intro"
+    type: microcycle
+    microcycle: { target_h: 14.3, key: moderate, long_ride_h: 3.5, long_run_h: 1.8, brick_run_h: 0.6, fuel_g_per_h: "85-95", ow_swim: true, bike_tempo_easy: true, long_ride_blocks: "4x30' @ 190-198 W", run_key: "IM-pace 3x3km @ 4:18-4:22/km off 3' jog. Malbork marathon pace, FRESH.", brick_pace: "4:22/km", easy_days: 3 }
+  - index: 43
+    start: 2027-06-28
+    phase: build
+    focus: "IM specific 1"
+    type: microcycle
+    microcycle: { target_h: 15.0, key: moderate, long_ride_h: 3.8, long_run_h: 1.9, brick_run_h: 0.75, fuel_g_per_h: "85-95", ow_swim: true, bike_tempo_easy: true, long_ride_blocks: "4x30' @ 190-198 W", run_key: "IM-pace 3x3km @ 4:18-4:22/km off 3' jog. Malbork marathon pace, FRESH.", brick_pace: "4:22/km" }
+  - index: 44
+    start: 2027-07-05
+    phase: taper
+    focus: "Mini-taper -> RACE Syców 70.3 (Sun) + full fueling dress rehearsal"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim easy + 4x50 fast", intensity: easy, minutes: 40, desc: "Openers, stay sharp." }
+      - { day: 1, sport: bike, name: "Bike openers", intensity: moderate, minutes: 60, desc: "3x8' @ 205-212 W 4iiii + 3x30s. Race bike, zero-offset PM." }
+      - { day: 1, sport: run,  name: "Brick run short", intensity: easy, minutes: 20, brick: true, desc: "10' off bike @ 3:50/km." }
+      - { day: 2, sport: swim, name: "Swim race-pace feel", intensity: moderate, minutes: 35, desc: "8x100 @ 1:44-1:46, long rests." }
+      - { day: 2, sport: bike, name: "Bike Z2", intensity: easy, minutes: 70, desc: "Aerobic. B race: hold chronic load through the week rather than tapering into it." }
+      - { day: 3, sport: run,  name: "Run easy + strides", intensity: easy, minutes: 35, desc: "4x20s; legs snappy." }
+      - { day: 4, sport: bike, name: "Spin + openers", intensity: easy, minutes: 40, desc: "A few 30s efforts, otherwise easy." }
+      - { day: 5, sport: swim, name: "Swim shakeout", intensity: easy, minutes: 20, desc: "Short, pre-race feel." }
+      - { day: 5, sport: run,  name: "Shakeout jog", intensity: easy, minutes: 20, desc: "15-20' easy + 3 strides." }
+      - { day: 6, sport: other, name: "RACE: GTT Syców 1/2 IM", intensity: moderate, minutes: 262, category: race, desc: "Planning 4:21, stretch 4:15. Swim 34:30 / bike 2:22 @ 212 W NP CAP / run 1:21:30 @ 3:52/km, first 3 km 10 s/km slower. The last full fueling dress rehearsal before Malbork: exact race products, 85-90 g/h from the CHO bottle plus water, last 30' of the bike fluid only, GI score logged." }
+  - index: 45
+    start: 2027-07-12
+    phase: build
+    focus: "Post-race Mon-Thu easy, then aerobic rebuild"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim recovery", intensity: easy, minutes: 30, desc: "Technique only." }
+      - { day: 2, sport: bike, name: "Easy spin", intensity: easy, minutes: 45, desc: "Z1-2 flush." }
+      - { day: 3, sport: run,  name: "Run easy", intensity: easy, minutes: 30, desc: "Short, easy." }
+      - { day: 3, sport: swim, name: "Swim easy", intensity: easy, minutes: 30, desc: "Frequency." }
+      - { day: 4, sport: swim, name: "Swim open water", intensity: easy, minutes: 50, desc: "OW skills." }
+      - { day: 4, sport: run,  name: "Run easy (frequency)", intensity: easy, minutes: 35, desc: "Z2." }
+      - { day: 4, sport: other, name: "Strength (upper + core)", intensity: easy, minutes: 40, desc: "Not a leg-killer." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 180, desc: "Rebuild aerobic in the IM position. CHO bottle 85 g/h plus water." }
+      - { day: 5, sport: run,  name: "Brick run off bike", intensity: easy, minutes: 25, brick: true, desc: "Z2 off the bike." }
+      - { day: 6, sport: run,  name: "Long run (Z2)", intensity: easy, minutes: 95, desc: "Easy aerobic. The IM-specific weeks start now." }
+  - index: 46
+    start: 2027-07-19
+    phase: build
+    focus: "IM specific 2: 4h + 60' IM-pace brick. FTP & CSS retest"
+    type: microcycle
+    microcycle: { target_h: 13.6, key: moderate, long_ride_h: 4.0, long_run_h: 1.75, brick_run_h: 1.0, fuel_g_per_h: "85-95", ow_swim: true, bike_tempo_easy: true, long_ride_blocks: "4x30' @ 190-198 W", run_key: "IM-pace 3x3km @ 4:18-4:22/km off 3' jog. Malbork marathon pace, FRESH.", bike_key: "FTP TEST, INDOORS, same setup every time: KICKR in resistance or passive mode, NOT ERG, paced off the 4iiii. Warm-up 10' easy, 10' Z2, 3x1' high cadence, 2x30s at test power, 5' Z2, 5' Z1, then the 20-min TT. FTP = 20-min average x 0.95. No ramp tests. Re-derive every watt from the result.", brick_pace: "4:22/km" }
+  - index: 47
+    start: 2027-07-26
+    phase: build
+    focus: "IM specific 3: 4.5h + 45' brick, 2h15 Z2 long run Sunday"
+    type: microcycle
+    microcycle: { target_h: 14.8, key: moderate, long_ride_h: 4.5, long_run_h: 2.25, brick_run_h: 0.75, fuel_g_per_h: "85-95", ow_swim: true, bike_tempo_easy: true, long_ride_blocks: "3x40' @ 190-198 W", run_key: "IM-pace 3x3km @ 4:18-4:22/km off 3' jog. Malbork marathon pace, FRESH.", brick_pace: "4:22/km" }
+  - index: 48
+    start: 2027-08-02
+    phase: build
+    focus: "IM specific 4: 5h OUTDOOR ride = durability gate + 5 h gut validation"
+    type: microcycle
+    microcycle: { target_h: 15.6, key: moderate, long_ride_h: 5.0, long_run_h: 1.75, brick_run_h: 1.0, fuel_g_per_h: "85-95", ow_swim: true, bike_tempo_easy: true, long_ride_blocks: "3x40' @ 190-198 W OUTDOORS (ERG cannot measure fade): the DURABILITY GATE -- power fade <5% and Pw:HR drift <5% across the blocks -- and the 5 h gut validation at 85-95 g/h in race-morning conditions, GI-scored.", run_key: "IM-pace 3x3km @ 4:18-4:22/km off 3' jog. Malbork marathon pace, FRESH.", no_vo2: true, brick_pace: "4:22/km" }
+  - index: 49
+    start: 2027-08-09
+    phase: build
+    is_recovery: true
+    focus: "Recovery valley before the peak"
+    type: microcycle
+    microcycle: { target_h: 9.8, key: easy, long_ride_h: 2.5, long_run_h: 1.2, brick_run_h: 0.4, fuel_g_per_h: "85", ow_swim: true }
+  - index: 50
+    start: 2027-08-16
+    phase: peak
+    focus: "PEAK: Malbork dress rehearsal, 5h ride + 90' IM-pace brick at full race fuel"
+    type: microcycle
+    microcycle: { target_h: 16.2, key: moderate, long_ride_h: 5.0, long_run_h: 1.5, brick_run_h: 1.5, fuel_g_per_h: "85-95", ow_swim: true, bike_tempo_easy: true, long_ride_blocks: "3x40' @ 190-198 W", run_key: "IM-pace 3x3km @ 4:18-4:22/km off 3' jog. Malbork marathon pace, FRESH.", no_vo2: true, brick_pace: "4:22/km" }
+  - index: 51
+    start: 2027-08-23
+    phase: taper
+    focus: "Taper 1: volume down ~40%, keep IM-power touches"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 45, desc: "Volume coming down." }
+      - { day: 1, sport: bike, name: "Bike race-power touches", intensity: moderate, minutes: 75, desc: "3x10' @ 190-198 W 4iiii (Malbork IM power)." }
+      - { day: 2, sport: swim, name: "Swim race-temperature 1", intensity: moderate, minutes: 40, desc: "Wetsuit at Malbork water temp (16-18 C). 5' face-in float before starting, then 20' steady. Familiarisation, not adaptation (that was the cold-shock blocks)." }
+      - { day: 2, sport: run,  name: "Run key (short)", intensity: moderate, minutes: 45, desc: "2x2km @ 4:18-4:22/km (IM pace) off 3' jog. Sharpen, don't build." }
+      - { day: 3, sport: bike, name: "Bike tempo (light)", intensity: moderate, minutes: 80, desc: "2x12' @ 208-220 W (sweet spot) inside 80'." }
+      - { day: 3, sport: run,  name: "Run easy (frequency)", intensity: easy, minutes: 30, desc: "Z2." }
+      - { day: 4, sport: swim, name: "Swim race-temperature 2", intensity: easy, minutes: 40, desc: "15-25' wetsuit at race temp." }
+      - { day: 5, sport: bike, name: "Last long ride", intensity: moderate, minutes: 165, desc: "2h45 with 3x20' @ 190-198 W. Full race fuelling with exact products, 85-95 g/h; no new product from here to the race." }
+      - { day: 5, sport: run,  name: "Brick run off bike", intensity: easy, minutes: 25, brick: true, desc: "Z2 off the fluid-only final 30' of the ride." }
+      - { day: 6, sport: run,  name: "Long run (reduced)", intensity: easy, minutes: 90, desc: "Last longer run; easy." }
+  - index: 52
+    start: 2027-08-30
+    phase: taper
+    focus: "Taper 2 -> RACE Castle Triathlon Malbork (Sun 5 Sep)"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim easy + pace", intensity: easy, minutes: 35, desc: "Short, 4x100 @ IM pace." }
+      - { day: 1, sport: bike, name: "Bike openers", intensity: moderate, minutes: 60, desc: "3x8' @ 190-198 W + 3x30s. Drivetrain serviced 3 weeks ago; Di2 at 100%." }
+      - { day: 2, sport: run,  name: "Run easy + strides", intensity: easy, minutes: 50, desc: "Z2 + 4x20s strides." }
+      - { day: 2, sport: bike, name: "Bike Z2", intensity: easy, minutes: 60, desc: "Aerobic. Race week is not a rest week: over-freshness costs the first hour of the bike." }
+      - { day: 2, sport: swim, name: "Swim race-temperature 3", intensity: easy, minutes: 30, desc: "Final exposure at race temperature. 5' face-in float, then easy." }
+      - { day: 3, sport: bike, name: "Race-bike shakedown", intensity: easy, minutes: 60, desc: "60' easy including 30 shifts under load, front and rear. The Di2 check." }
+      - { day: 4, sport: other, name: "REST", intensity: easy, minutes: 20, desc: "Full day off bar a walk. Travel day." }
+      - { day: 5, sport: swim, name: "Swim shakeout", intensity: easy, minutes: 15, desc: "Very short. Warm up properly on race morning." }
+      - { day: 5, sport: bike, name: "Easy spin", intensity: easy, minutes: 25, desc: "Z1 only." }
+      - { day: 6, sport: other, name: "RACE: Castle Triathlon Malbork (full)", intensity: moderate, minutes: 570, category: race, desc: "PLANNING 9:17, stretch 8:50. Swim 1:12 / bike 4:56 @ 196 W NP (IF 0.76 of the latest tested FTP -- never higher) / run 3:04 @ 4:22/km, first 10 km 10 s/km slower. Bike 85-95 g/h from the CHO bottle plus water, run 60-75 g/h (gels fine); in-race rescue if the gut turns. Fluid 60-80% of measured sweat rate. Cold water: full warm-up, face-in before the gun. Shifting bike only." }
+  - index: 53
+    start: 2027-09-06
+    phase: transition
+    is_recovery: true
+    focus: "Post-IM week 1: actual rest. Four easy sessions, all optional"
+    type: explicit
+    sessions:
+      - { day: 2, sport: other, name: "Walk", intensity: easy, minutes: 40, desc: "That is all. Post-IM week one is for rest." }
+      - { day: 4, sport: swim, name: "Swim very easy", intensity: easy, minutes: 30, desc: "Float and stretch out." }
+      - { day: 5, sport: other, name: "Walk / hike", intensity: easy, minutes: 90, desc: "Easy time on feet, no running." }
+      - { day: 6, sport: bike, name: "Easy spin", intensity: easy, minutes: 60, desc: "Z1, flat, no structure." }
+  - index: 54
+    start: 2027-09-13
+    phase: transition
+    focus: "Post-IM week 2: easy aerobic only"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim easy", intensity: easy, minutes: 40, desc: "Technique only." }
+      - { day: 2, sport: bike, name: "Easy spin", intensity: easy, minutes: 55, desc: "Z1-2." }
+      - { day: 3, sport: run,  name: "Run easy", intensity: easy, minutes: 30, desc: "First real run back. Walk breaks fine." }
+      - { day: 4, sport: swim, name: "Swim easy", intensity: easy, minutes: 45, desc: "Frequency only." }
+      - { day: 5, sport: bike, name: "Easy ride", intensity: easy, minutes: 130, desc: "Scenic Z2." }
+      - { day: 6, sport: run,  name: "Run easy", intensity: easy, minutes: 55, desc: "Z2." }
+  - index: 55
+    start: 2027-09-20
+    phase: transition
+    focus: "Post-IM week 3: technique and strength restart"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim technique", intensity: easy, minutes: 50, desc: "Drills. Start the second winter with the stroke, not the engine." }
+      - { day: 2, sport: bike, name: "Easy spin", intensity: easy, minutes: 70, desc: "Z2." }
+      - { day: 2, sport: run,  name: "Run easy", intensity: easy, minutes: 40, desc: "Z2." }
+      - { day: 3, sport: other, name: "Strength (re-introduction)", intensity: easy, minutes: 45, desc: "Light. Rebuild the calf/Achilles base before any run speed returns." }
+      - { day: 4, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 50, desc: "" }
+      - { day: 4, sport: run,  name: "Run easy (frequency)", intensity: easy, minutes: 40, desc: "Z2." }
+      - { day: 5, sport: bike, name: "Long ride (Z2)", intensity: easy, minutes: 170, desc: "Easy. Fuel 60 g/h: restart the gut progression from the bottom." }
+      - { day: 6, sport: run,  name: "Long run (Z2)", intensity: easy, minutes: 85, desc: "Easy aerobic." }
+  - index: 56
+    start: 2027-09-27
+    phase: base
+    focus: "Winter 2 base 1: run volume is the headline. FTP & CSS test"
+    type: microcycle
+    microcycle: { target_h: 8.6, key: moderate, long_ride_h: 2.5, long_run_h: 1.5, brick_run_h: 0.5, fuel_g_per_h: "70", ow_swim: true, bike_tempo_easy: true, run_key: "Hills 10x60s uphill @ 5 km effort, jog down. Tissue prep BEFORE speed: calf/Achilles loading is what makes the winter threshold work survivable on 35-45 km/week of history.", long_run_finish: "last 15' @ 4:00/km when fresh enough.", bike_key: "FTP TEST, INDOORS, same setup every time: KICKR in resistance or passive mode, NOT ERG, paced off the 4iiii. Warm-up 10' easy, 10' Z2, 3x1' high cadence, 2x30s at test power, 5' Z2, 5' Z1, then the 20-min TT. FTP = 20-min average x 0.95. No ramp tests. Re-derive every watt from the result." }
+  - index: 57
+    start: 2027-10-04
+    phase: base
+    focus: "Winter 2 base 1: 5 km run TT; cold-shock block (Oct)"
+    type: microcycle
+    microcycle: { target_h: 8.1, key: moderate, long_ride_h: 2.6, long_run_h: 1.6, brick_run_h: 0.5, fuel_g_per_h: "70", ow_swim: true, bike_tempo_easy: true, run_key: "Hills 10x60s uphill @ 5 km effort, jog down. Tissue prep BEFORE speed: calf/Achilles loading is what makes the winter threshold work survivable on 35-45 km/week of history.", long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+    extra_sessions:
+      - { day: 2, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+      - { day: 4, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 58
+    start: 2027-10-11
+    phase: base
+    focus: "Winter 2 base 1: run to 5x/week if the calves allow"
+    type: microcycle
+    microcycle: { target_h: 9.6, key: moderate, long_ride_h: 2.8, long_run_h: 1.7, brick_run_h: 0.5, fuel_g_per_h: "70", ow_swim: true, bike_tempo_easy: true, run_key: "Hills 10x60s uphill @ 5 km effort, jog down. Tissue prep BEFORE speed: calf/Achilles loading is what makes the winter threshold work survivable on 35-45 km/week of history.", long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+    extra_sessions:
+      - { day: 2, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+      - { day: 4, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 59
+    start: 2027-10-18
+    phase: base
+    focus: "Winter 2 base 1"
+    type: microcycle
+    microcycle: { target_h: 10.3, key: moderate, long_ride_h: 2.8, long_run_h: 1.8, brick_run_h: 0.5, fuel_g_per_h: "70", bike_tempo_easy: true, run_key: "Hills 10x60s uphill @ 5 km effort, jog down. Tissue prep BEFORE speed: calf/Achilles loading is what makes the winter threshold work survivable on 35-45 km/week of history.", long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+    extra_sessions:
+      - { day: 2, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+      - { day: 4, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 60
+    start: 2027-10-25
+    phase: base
+    is_recovery: true
+    focus: "Recovery valley"
+    type: microcycle
+    microcycle: { target_h: 6.3, key: easy, long_ride_h: 1.8, long_run_h: 1.0, brick_run_h: 0.3, fuel_g_per_h: "70" }
+  - index: 61
+    start: 2027-11-01
+    phase: base
+    focus: "Winter 2 base 2: run threshold returns"
+    type: microcycle
+    microcycle: { target_h: 11.2, key: moderate, long_ride_h: 2.8, long_run_h: 1.8, brick_run_h: 0.5, fuel_g_per_h: "70", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 62
+    start: 2027-11-08
+    phase: base
+    focus: "Winter 2 base 2"
+    type: microcycle
+    microcycle: { target_h: 11.8, key: moderate, long_ride_h: 3.0, long_run_h: 1.9, brick_run_h: 0.5, fuel_g_per_h: "70", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 63
+    start: 2027-11-15
+    phase: base
+    focus: "Winter 2 base 2"
+    type: microcycle
+    microcycle: { target_h: 12.2, key: moderate, long_ride_h: 3.0, long_run_h: 1.9, brick_run_h: 0.5, fuel_g_per_h: "70", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 64
+    start: 2027-11-22
+    phase: base
+    focus: "Winter 2 base 2: gut training to 80 g/h"
+    type: microcycle
+    microcycle: { target_h: 12.6, key: moderate, long_ride_h: 3.2, long_run_h: 2.0, brick_run_h: 0.5, fuel_g_per_h: "80", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 65
+    start: 2027-11-29
+    phase: base
+    is_recovery: true
+    focus: "Recovery valley: 10 km run TT"
+    type: microcycle
+    microcycle: { target_h: 7.2, key: easy, long_ride_h: 2.0, long_run_h: 1.1, brick_run_h: 0.3, fuel_g_per_h: "80" }
+  - index: 66
+    start: 2027-12-06
+    phase: base
+    focus: "Winter 2 threshold 1: targeted FTP work, not junk volume"
+    type: microcycle
+    microcycle: { target_h: 12.0, key: moderate, long_ride_h: 3.0, long_run_h: 1.9, brick_run_h: 0.5, fuel_g_per_h: "80", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 67
+    start: 2027-12-13
+    phase: base
+    focus: "Winter 2 threshold 1"
+    type: microcycle
+    microcycle: { target_h: 12.6, key: moderate, long_ride_h: 3.0, long_run_h: 2.0, brick_run_h: 0.5, fuel_g_per_h: "80", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 68
+    start: 2027-12-20
+    phase: transition
+    focus: "Holiday week: easy, unstructured"
+    type: microcycle
+    microcycle: { target_h: 7.0, key: easy, long_ride_h: 2.0, long_run_h: 1.0, brick_run_h: 0.3, fuel_g_per_h: "75" }
+  - index: 69
+    start: 2027-12-27
+    phase: base
+    focus: "Winter 2 threshold 2: FTP & CSS retest, re-derive all watts"
+    type: microcycle
+    microcycle: { target_h: 11.0, key: moderate, long_ride_h: 2.8, long_run_h: 1.9, brick_run_h: 0.5, fuel_g_per_h: "80", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough.", bike_key: "FTP TEST, INDOORS, same setup every time: KICKR in resistance or passive mode, NOT ERG, paced off the 4iiii. Warm-up 10' easy, 10' Z2, 3x1' high cadence, 2x30s at test power, 5' Z2, 5' Z1, then the 20-min TT. FTP = 20-min average x 0.95. No ramp tests. Re-derive every watt from the result." }
+  - index: 70
+    start: 2028-01-03
+    phase: base
+    focus: "Winter 2 threshold 2"
+    type: microcycle
+    microcycle: { target_h: 11.8, key: moderate, long_ride_h: 3.0, long_run_h: 2.0, brick_run_h: 0.5, fuel_g_per_h: "80", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 71
+    start: 2028-01-10
+    phase: base
+    focus: "Winter 2 threshold 2"
+    type: microcycle
+    microcycle: { target_h: 12.4, key: moderate, long_ride_h: 3.0, long_run_h: 2.0, brick_run_h: 0.5, fuel_g_per_h: "80", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 72
+    start: 2028-01-17
+    phase: base
+    focus: "Winter 2 threshold 2"
+    type: microcycle
+    microcycle: { target_h: 12.8, key: moderate, long_ride_h: 3.2, long_run_h: 2.1, brick_run_h: 0.5, fuel_g_per_h: "80", bike_tempo_easy: true, long_run_finish: "last 15' @ 4:00/km when fresh enough." }
+  - index: 73
+    start: 2028-01-24
+    phase: base
+    is_recovery: true
+    focus: "Recovery valley"
+    type: microcycle
+    microcycle: { target_h: 7.2, key: easy, long_ride_h: 2.0, long_run_h: 1.1, brick_run_h: 0.3, fuel_g_per_h: "80" }
+  - index: 74
+    start: 2028-01-31
+    phase: base
+    focus: "Spring 2028 volume 1: 10 km run TT; body-comp checkpoint 71 kg (hold)"
+    type: microcycle
+    microcycle: { target_h: 12.6, key: moderate, long_ride_h: 3.2, long_run_h: 2.0, brick_run_h: 0.6, fuel_g_per_h: "85", bike_tempo_easy: true, run_key: "Threshold 4x2km @ 3:35-3:38/km off 400m jog.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+  - index: 75
+    start: 2028-02-07
+    phase: base
+    focus: "Spring 2028 volume 1"
+    type: microcycle
+    microcycle: { target_h: 13.2, key: moderate, long_ride_h: 3.5, long_run_h: 2.1, brick_run_h: 0.6, fuel_g_per_h: "85", bike_tempo_easy: true, run_key: "Threshold 4x2km @ 3:35-3:38/km off 400m jog.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+  - index: 76
+    start: 2028-02-14
+    phase: base
+    focus: "Spring 2028 volume 1: OW swimming resumes"
+    type: microcycle
+    microcycle: { target_h: 13.8, key: moderate, long_ride_h: 3.6, long_run_h: 2.1, brick_run_h: 0.6, fuel_g_per_h: "85", bike_tempo_easy: true, run_key: "Threshold 4x2km @ 3:35-3:38/km off 400m jog.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+  - index: 77
+    start: 2028-02-21
+    phase: base
+    focus: "Spring 2028 volume 1: long run to 2h15"
+    type: microcycle
+    microcycle: { target_h: 14.2, key: moderate, long_ride_h: 3.8, long_run_h: 2.25, brick_run_h: 0.6, fuel_g_per_h: "85", bike_tempo_easy: true, run_key: "Threshold 4x2km @ 3:35-3:38/km off 400m jog.", long_run_finish: "last 20' @ 3:55/km when fresh enough." }
+  - index: 78
+    start: 2028-02-28
+    phase: base
+    is_recovery: true
+    focus: "Recovery valley"
+    type: microcycle
+    microcycle: { target_h: 8.0, key: easy, long_ride_h: 2.2, long_run_h: 1.1, brick_run_h: 0.3, fuel_g_per_h: "85" }
+  - index: 79
+    start: 2028-03-06
+    phase: build
+    focus: "Hamburg IM specific 1: IM-pace intro"
+    type: microcycle
+    microcycle: { target_h: 13.8, key: moderate, long_ride_h: 3.5, long_run_h: 2.1, brick_run_h: 0.75, fuel_g_per_h: "85-95", bike_tempo_easy: true, long_ride_blocks: "4x30' @ 195-203 W", run_key: "IM-pace 3x3km @ 4:16-4:20/km off 3' jog. Hamburg marathon pace, FRESH.", brick_pace: "4:19/km" }
+  - index: 80
+    start: 2028-03-13
+    phase: build
+    focus: "Hamburg IM specific 2"
+    type: microcycle
+    microcycle: { target_h: 14.4, key: moderate, long_ride_h: 3.8, long_run_h: 2.0, brick_run_h: 0.75, fuel_g_per_h: "85-95", bike_tempo_easy: true, long_ride_blocks: "4x30' @ 195-203 W", run_key: "IM-pace 3x3km @ 4:16-4:20/km off 3' jog. Hamburg marathon pace, FRESH.", brick_pace: "4:19/km" }
+  - index: 81
+    start: 2028-03-20
+    phase: build
+    focus: "Hamburg IM specific 3: 4h + 60' brick. OUTDOOR FTP cross-check + CSS retest"
+    type: microcycle
+    microcycle: { target_h: 14.6, key: moderate, long_ride_h: 4.0, long_run_h: 1.75, brick_run_h: 1.0, fuel_g_per_h: "85-95", bike_tempo_easy: true, long_ride_blocks: "4x30' @ 195-203 W", run_key: "IM-pace 3x3km @ 4:16-4:20/km off 3' jog. Hamburg marathon pace, FRESH.", bike_key: "FTP TEST, OUTDOORS -- the once-a-year cross-check of the indoor series, not part of its trend. 20-min TT on the usual road segment, 4iiii, the same warm-up as the indoor tests. FTP = 20-min average x 0.95. If the roads are still winter, move it to the first rideable week rather than replacing it with an indoor test.", brick_pace: "4:19/km" }
+  - index: 82
+    start: 2028-03-27
+    phase: build
+    focus: "Hamburg IM specific 4"
+    type: microcycle
+    microcycle: { target_h: 15.2, key: moderate, long_ride_h: 4.0, long_run_h: 2.0, brick_run_h: 0.75, fuel_g_per_h: "85-95", bike_tempo_easy: true, long_ride_blocks: "3x40' @ 195-203 W", run_key: "IM-pace 3x3km @ 4:16-4:20/km off 3' jog. Hamburg marathon pace, FRESH.", brick_pace: "4:19/km" }
+  - index: 83
+    start: 2028-04-03
+    phase: build
+    is_recovery: true
+    focus: "Recovery valley; cold-shock block (Apr)"
+    type: microcycle
+    microcycle: { target_h: 8.8, key: easy, long_ride_h: 2.5, long_run_h: 1.2, brick_run_h: 0.4, fuel_g_per_h: "90" }
+    extra_sessions:
+      - { day: 2, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+      - { day: 4, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 84
+    start: 2028-04-10
+    phase: build
+    focus: "Hamburg IM specific 5: 4.5h OUTDOOR durability gate, 2h15 Z2 long run Sunday"
+    type: microcycle
+    microcycle: { target_h: 15.2, key: moderate, long_ride_h: 4.5, long_run_h: 2.25, brick_run_h: 0.75, fuel_g_per_h: "85-95", bike_tempo_easy: true, long_ride_blocks: "3x40' @ 195-203 W OUTDOORS (ERG cannot measure fade): the DURABILITY GATE -- power fade <5% and Pw:HR drift <5% across the blocks -- and the 5 h gut validation at 85-95 g/h in race-morning conditions, GI-scored.", run_key: "IM-pace 3x3km @ 4:16-4:20/km off 3' jog. Hamburg marathon pace, FRESH.", brick_pace: "4:19/km" }
+    extra_sessions:
+      - { day: 2, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+      - { day: 4, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 85
+    start: 2028-04-17
+    phase: build
+    focus: "Hamburg IM specific 6: last big week before the tune-up race"
+    type: microcycle
+    microcycle: { target_h: 15.2, key: moderate, long_ride_h: 4.5, long_run_h: 1.75, brick_run_h: 1.0, fuel_g_per_h: "85-95", ow_swim: true, bike_tempo_easy: true, long_ride_blocks: "3x40' @ 195-203 W", run_key: "IM-pace 3x3km @ 4:16-4:20/km off 3' jog. Hamburg marathon pace, FRESH.", no_vo2: true, brick_pace: "4:19/km" }
+    extra_sessions:
+      - { day: 2, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+      - { day: 4, sport: other, name: "Cold-shock habituation", intensity: easy, minutes: 10, desc: "3-5 min immersion at 10-15 C (lake or cold tub), slow exhale-led breathing, face in for the last minute. Not a swim: this is the adaptation; the race-temperature swims later are only familiarisation." }
+  - index: 86
+    start: 2028-04-24
+    phase: taper
+    focus: "Mini-taper -> RACE tune-up 70.3 (Sun 30 Apr): the fueling rehearsal"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim easy + 4x50 fast", intensity: easy, minutes: 40, desc: "Openers." }
+      - { day: 1, sport: bike, name: "Bike openers", intensity: moderate, minutes: 60, desc: "3x8' @ 205-212 W 4iiii + 3x30s." }
+      - { day: 2, sport: swim, name: "Swim race-pace", intensity: moderate, minutes: 35, desc: "8x100 @ CSS, long rest." }
+      - { day: 2, sport: run,  name: "Run easy + strides", intensity: easy, minutes: 40, desc: "Z2 + 6x20s." }
+      - { day: 3, sport: bike, name: "Bike Z2", intensity: easy, minutes: 70, desc: "Aerobic. Mini-taper only: a rehearsal, not a peak." }
+      - { day: 3, sport: run,  name: "Run easy (frequency)", intensity: easy, minutes: 35, desc: "Z2." }
+      - { day: 4, sport: swim, name: "Swim open water", intensity: easy, minutes: 45, desc: "Wetsuit OW if available at the venue." }
+      - { day: 5, sport: run,  name: "Shakeout", intensity: easy, minutes: 20, desc: "15' + 3 strides." }
+      - { day: 6, sport: other, name: "RACE: Tune-up 70.3", intensity: moderate, minutes: 262, category: race, desc: "Planning 4:21, stretch 4:15. Swim 34:00 / bike 2:23 @ 214 W NP cap / run 1:21. THE POINT IS THE FUELING AND PACING REHEARSAL 5 weeks before Hamburg: exact race products at 85-95 g/h, last 30' of the bike fluid only, GI score logged. No new product after today." }
+  - index: 87
+    start: 2028-05-01
+    phase: build
+    focus: "Post-race Mon-Thu easy, then back to IM load"
+    type: microcycle
+    microcycle: { target_h: 15.0, key: moderate, long_ride_h: 4.5, long_run_h: 1.75, brick_run_h: 0.75, fuel_g_per_h: "85-95", ow_swim: true, bike_tempo_easy: true, long_ride_blocks: "3x40' @ 195-203 W", run_key: "IM-pace 3x3km @ 4:16-4:20/km off 3' jog. Hamburg marathon pace, FRESH.", no_vo2: true, brick_pace: "4:19/km", easy_days: 4 }
+  - index: 88
+    start: 2028-05-08
+    phase: peak
+    focus: "PEAK: Hamburg dress rehearsal, last 4.5h ride + 90' IM-pace brick at full race fuel"
+    type: microcycle
+    microcycle: { target_h: 16.0, key: moderate, long_ride_h: 4.5, long_run_h: 1.5, brick_run_h: 1.5, fuel_g_per_h: "85-95", ow_swim: true, bike_tempo_easy: true, long_ride_blocks: "3x45' @ 195-203 W", run_key: "IM-pace 3x3km @ 4:16-4:20/km off 3' jog. Hamburg marathon pace, FRESH.", no_vo2: true, brick_pace: "4:19/km" }
+  - index: 89
+    start: 2028-05-15
+    phase: taper
+    focus: "Taper 1 (~65% of peak): keep race-power touches; race-temperature swims begin"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 45, desc: "Volume coming down." }
+      - { day: 1, sport: bike, name: "Bike race-power touches", intensity: moderate, minutes: 70, desc: "3x12' @ 195-203 W 4iiii (Hamburg IM power)." }
+      - { day: 2, sport: swim, name: "Swim race-temperature 1", intensity: moderate, minutes: 40, desc: "The Alster in early June is 16-19 C. Wetsuit at race temp, 5' face-in float, then 20' steady. Familiarisation." }
+      - { day: 2, sport: run,  name: "Run key (short)", intensity: moderate, minutes: 45, desc: "2x2km @ 4:16-4:20/km (IM pace) off 3' jog." }
+      - { day: 3, sport: bike, name: "Bike tempo (light)", intensity: moderate, minutes: 80, desc: "2x12' @ 208-220 W (sweet spot) inside 80'." }
+      - { day: 3, sport: run,  name: "Run easy (frequency)", intensity: easy, minutes: 30, desc: "Z2." }
+      - { day: 4, sport: swim, name: "Swim race-temperature 2", intensity: easy, minutes: 40, desc: "Second exposure at race temperature." }
+      - { day: 5, sport: bike, name: "Last long ride", intensity: moderate, minutes: 165, desc: "2h45 with 3x20' @ 195-203 W. Exact race fuel at 85-95 g/h; final 30' fluid only." }
+      - { day: 5, sport: run,  name: "Brick run off bike", intensity: easy, minutes: 25, brick: true, desc: "Z2 off the bike." }
+      - { day: 6, sport: run,  name: "Long run (reduced)", intensity: easy, minutes: 90, desc: "Easy. Volume drops from here." }
+  - index: 90
+    start: 2028-05-22
+    phase: taper
+    focus: "Taper 2 (~65% of peak; the final 14 days sit ~47% below the peak block)"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 45, desc: "Feel." }
+      - { day: 1, sport: bike, name: "Bike race-power touches", intensity: moderate, minutes: 70, desc: "3x10' @ 195-203 W 4iiii." }
+      - { day: 2, sport: swim, name: "Swim race-temperature 3", intensity: easy, minutes: 35, desc: "Final exposure at Alster temperature." }
+      - { day: 2, sport: run,  name: "Run key (short)", intensity: moderate, minutes: 45, desc: "3x1.5km @ 4:16-4:20/km (IM pace) off 3' jog." }
+      - { day: 3, sport: bike, name: "Bike Z2", intensity: easy, minutes: 90, desc: "Aerobic." }
+      - { day: 3, sport: run,  name: "Run easy (frequency)", intensity: easy, minutes: 35, desc: "Z2." }
+      - { day: 4, sport: swim, name: "Swim easy", intensity: easy, minutes: 40, desc: "Keep feel." }
+      - { day: 5, sport: bike, name: "Long ride (reduced)", intensity: moderate, minutes: 180, desc: "3h with 2x20' @ 195-203 W. Exact race fuel." }
+      - { day: 5, sport: run,  name: "Brick run off bike", intensity: easy, minutes: 25, brick: true, desc: "Short, Z2." }
+      - { day: 6, sport: run,  name: "Long run (reduced)", intensity: easy, minutes: 80, desc: "Easy." }
+  - index: 91
+    start: 2028-05-29
+    phase: taper
+    focus: "Race week -> RACE IRONMAN Hamburg (Sun 4 Jun)"
+    type: explicit
+    sessions:
+      - { day: 1, sport: swim, name: "Swim easy + pace", intensity: easy, minutes: 35, desc: "4x100 @ IM pace." }
+      - { day: 1, sport: bike, name: "Bike openers", intensity: moderate, minutes: 60, desc: "3x8' @ 195-203 W + 3x30s." }
+      - { day: 2, sport: run,  name: "Run easy + strides", intensity: easy, minutes: 45, desc: "Z2 + 4x20s." }
+      - { day: 2, sport: swim, name: "Swim easy", intensity: easy, minutes: 30, desc: "Feel for the water." }
+      - { day: 2, sport: bike, name: "Bike Z2", intensity: easy, minutes: 60, desc: "Aerobic. Race week is not a rest week: over-freshness costs the first hour of the bike." }
+      - { day: 3, sport: swim, name: "Swim shakeout (Alster)", intensity: easy, minutes: 30, desc: "In the race water if possible. Face-in float first." }
+      - { day: 3, sport: bike, name: "Race-bike shakedown", intensity: easy, minutes: 60, desc: "60' easy including 30 shifts under load, front and rear. Di2 at 100%, charge cycles logged." }
+      - { day: 4, sport: other, name: "REST", intensity: easy, minutes: 20, desc: "Full day off bar a walk. Travel/registration." }
+      - { day: 5, sport: swim, name: "Swim shakeout", intensity: easy, minutes: 15, desc: "Very short." }
+      - { day: 5, sport: bike, name: "Easy spin", intensity: easy, minutes: 25, desc: "Z1 only." }
+      - { day: 6, sport: other, name: "RACE: IRONMAN Hamburg", intensity: moderate, minutes: 560, category: race, desc: "PLANNING 9:07, stretch 8:40. Swim 1:10 / bike 4:51 @ 201 W NP (IF 0.76 of the latest tested FTP -- if the test says less, ride less) / run 3:02 @ 4:19/km, first 10 km 10 s/km slower. Bike 85-95 g/h from the CHO bottle plus water, run 60-75 g/h, nothing new; in-race rescue if the gut turns. On 2026 numbers the M40-44 qualifying line was a ~9:21 finish: race the plan." }

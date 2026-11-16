@@ -15,9 +15,9 @@ correlations yourself — read them from the digest.
 
 1. **Refresh the data and build the nutrition digest** (run from the repo root):
    ```bash
-   uv run aithlete fitatu-import --from "<path/to/meal_plan_*.csv>"   # or drop files in data/raw/fitatu/_inbox/
-   uv run aithlete fetch          # ensure training + wellness are current
-   uv run aithlete nutrition      # writes data/context/nutrition-athlete.json
+   uv run trinity fitatu-import --from "<path/to/meal_plan_*.csv>"   # or drop files in data/raw/fitatu/_inbox/
+   uv run trinity fetch          # ensure training + wellness are current
+   uv run trinity nutrition      # writes data/context/nutrition-athlete.json
    ```
    `fitatu-import` is idempotent — re-running with new months just extends the store.
 
@@ -53,10 +53,10 @@ correlations yourself — read them from the digest.
       An `unknown` flag whose mean already clears the target is therefore strong
       evidence AGAINST a deficiency, even though it cannot confirm adequacy.
       Before accepting any apparent micronutrient shortfall, check whether a
-      staple food is simply unmapped — `aithlete food-gaps --nutrient <field>`
+      staple food is simply unmapped — `trinity food-gaps --nutrient <field>`
       ranks the blanks by logged mass, and one unmapped staple can account for a
       whole "deficiency". To close such a gap, group the products into a concept
-      in `data/food_concepts.json` and run `aithlete food-map`; matches are
+      in `data/food_concepts.json` and run `trinity food-map`; matches are
       pinned once settled, so never use `--repin` to "refresh" a working match.
       For omega-3, read the total alongside its sources: it is a sum over
       individual fatty acids, and plant ALA converts to the EPA/DHA that matter

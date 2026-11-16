@@ -39,7 +39,7 @@ h2 { break-after: avoid; } table, .note { break-inside: avoid; }
 .wk { font-weight:700; } .day { color: var(--mut); width: 78px; }
 </style></head><body>
 <div class='cover'>
-<h1>Aithlete — Season Plan &amp; Analysis</h1>
+<h1>Trinity — Season Plan &amp; Analysis</h1>
 <div class='sub'>Syców 1/2 IM (12 Jul 2026) &middot; Malbork Castle Triathlon (Full IM) (06 Sep 2026)<br>Targets: 4:20 1/2 &middot; 9:30 full</div>
 <div class='small' style='margin-top:10px'>Generated 2026-08-31 from 1611 activities (2023-05-21 &rarr; 2026-06-25). Plan id <span class='mono'>goal-2026-malbork</span>. All figures computed from persisted data; physiology values are estimates (provenance tagged), not lab-measured.</div></div>
 <div class='kpis'>
@@ -326,11 +326,11 @@ h2 { break-after: avoid; } table, .note { break-inside: avoid; }
 <h3>Run: durability over speed</h3><p>The IM result lives or dies on the run. Volume is aerobic (Z2) with race-effort finishes and brick runs off long rides so the legs learn IM marathon pace under fatigue &mdash; never a full-distance run.</p>
 <h3>Taper &amp; race-day form</h3><p>Two-week taper holds intensity but cuts volume so fatigue (ATL) sheds faster than fitness (CTL). The validator projects race-day TSB in the +10..+25 band that maximizes A-race performance without going stale.</p>
 <h2 class='pb'>8 &middot; Guardrail report</h2>
-<p>Checked by the deterministic validator (<span class='mono'>aithlete validate</span>): <b class='good'>PASS</b> (0 errors).</p>
+<p>Checked by the deterministic validator (<span class='mono'>trinity validate</span>): <b class='good'>PASS</b> (0 errors).</p>
 <table><tr><th>Check</th><th>Result</th></tr><tr><td>Weekly TSS ramp (peak-to-peak ≤10%)</td><td class='good'>pass</td></tr><tr><td>CTL ramp ≤7/wk</td><td class='good'>pass</td></tr><tr><td>Recovery cadence (≤3 load wks)</td><td class='good'>pass</td></tr><tr><td>Projected ACWR ≤1.5</td><td class='good'>pass</td></tr><tr><td>Taper window</td><td class='good'>pass</td></tr><tr><td>Race-day TSB in A-band</td><td class='good'>pass</td></tr><tr><td>Swim/bike/run frequency mins</td><td class='good'>pass</td></tr><tr><td>Brick in every build week</td><td class='good'>pass</td></tr></table>
 <p class='small'><b>Advisory warnings (non-blocking):</b> (a) the post-first-race weekly-hours step into the bigger block (TSS ramp stays within cap); (b) race-specific and taper weeks dip below the 70% easy-time floor because short quality work is a larger fraction of low volume. Total stress stays easy-dominated.</p>
 <h2>9 &middot; Execute</h2><p>Publish planned workouts to intervals.icu (syncs to Garmin):</p>
-<pre class='mono note'>uv run aithlete validate data/plans/goal-2026-malbork.json
-uv run aithlete push     data/plans/goal-2026-malbork.json   # gated by the validator</pre>
-<p class='small'>Re-run <span class='mono'>aithlete profile</span> after the first race to refresh CTL/FTP/PRs, then <span class='mono'>adjust-plan</span> if readiness moves the targets.</p>
+<pre class='mono note'>uv run trinity validate data/plans/goal-2026-malbork.json
+uv run trinity push     data/plans/goal-2026-malbork.json   # gated by the validator</pre>
+<p class='small'>Re-run <span class='mono'>trinity profile</span> after the first race to refresh CTL/FTP/PRs, then <span class='mono'>adjust-plan</span> if readiness moves the targets.</p>
 </body></html>

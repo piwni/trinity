@@ -1,4 +1,4 @@
-# Aithlete training rulebook — PARAMETERIZED, validator-enforceable.
+# Trinity training rulebook — PARAMETERIZED, validator-enforceable.
 #
 # This file is the heart of the deterministic plan validator. Every threshold is
 # a concrete number so `planning/validator.py` can enforce a plan's *shape*
@@ -35,7 +35,12 @@ loading_pattern:
   by_training_age:
     novice:       { load_weeks: 2, recovery_weeks: 1 }   # 2:1
     intermediate: { load_weeks: 3, recovery_weeks: 1 }   # 3:1
-    advanced:     { load_weeks: 3, recovery_weeks: 1 }   # 3:1, can extend to 4:1 in base
+    # 4:1 for advanced athletes. A 3:1 cadence across a long winter base block
+    # erases the preceding load faster than it accumulates: with a 40-60% valley
+    # every 4th week the mean weekly load (and therefore the equilibrium CTL)
+    # sits ~15% below the load weeks, so a 6-month base can net out flat.
+    # Ref: Friel (advanced athletes extend to 4:1 in base); see notes.md.
+    advanced:     { load_weeks: 4, recovery_weeks: 1 }   # 4:1
   max_consecutive_load_weeks: 4   # never more than this without a recovery week
 
 # Ramp-rate caps — the single most important safety guardrail.
@@ -125,7 +130,10 @@ daily_load:
 hard_limits:
   max_single_session_hours: 8
   max_weekly_hours: 25            # beyond this is pro-only; flag for amateurs
-  min_rest_days_per_week: 0       # 0 allowed but flagged if CTL rising fast
+  # At least one scheduled full day off per non-race week. A seven-day-a-week
+  # plan is a compliance failure before it is a physiological one, and for an
+  # age-grouper with a job it guarantees silent non-adherence.
+  min_rest_days_per_week: 1
   # Back-to-back long ride + long run on consecutive days is the standard
   # long-course "big weekend" and is intentionally allowed; the real risk is
   # same-day stacking, enforced via daily_load above.

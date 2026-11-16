@@ -7,27 +7,27 @@ import datetime as dt
 import pandas as pd
 import pytest
 
-from aithlete.analysis.loaders import (
+from trinity.analysis.loaders import (
     _apply_power_corrections,
     load_activities,
     load_settings,
     load_wellness,
 )
-from aithlete.config import get_config
-from aithlete.connectors.fetch import fetch_all
-from aithlete.connectors.intervals import IntervalsClient
-from aithlete.storage.io import load_json
-from aithlete.storage.paths import watermark_path
+from trinity.config import get_config
+from trinity.connectors.fetch import fetch_all
+from trinity.connectors.intervals import IntervalsClient
+from trinity.storage.io import load_json
+from trinity.storage.paths import watermark_path
 
 
 def test_unconfigured_open_wearables_returns_no_recovery(tmp_data_dir, monkeypatch):
     """Regression: missing OW credentials used to overlay the synthetic athlete
     onto real Garmin wellness (HRV ~65 / RHR ~50 for Feb–Jun 2026)."""
-    monkeypatch.setenv("AITHLETE_OFFLINE", "false")
+    monkeypatch.setenv("TRINITY_OFFLINE", "false")
     monkeypatch.delenv("OPEN_WEARABLES_API_KEY", raising=False)
     monkeypatch.delenv("OPEN_WEARABLES_USER_ID", raising=False)
     get_config.cache_clear()
-    from aithlete.connectors.openwearables import OpenWearablesClient
+    from trinity.connectors.openwearables import OpenWearablesClient
     rows = OpenWearablesClient().recovery_summary(dt.date(2026, 3, 1), dt.date(2026, 3, 31))
     assert rows == []
 
@@ -126,3 +126,20 @@ def test_offline_push_is_idempotent(tmp_data_dir):
     client.push_events(events)  # same ids -> upsert, no duplicates
     stored = load_json(client.config.raw_dir / "intervals" / "_pushed_events.json")
     assert len(stored["events"]) == 2
+
+
+def test_manually_supplied_thresholds_keep_their_provenance(synth_frames):
+    """A value from manual_metrics.json must not be labelled as a connector value."""
+    from trinity.analysis.loaders import _merge_manual_metrics, data_as_of
+    from trinity.analysis.profile_builder import build_profile
+
+    acts, well, base = synth_frames
+    fetched = {**base, "bike": {**base.get("bike", {}), "ftp_w": 280, "lthr_bpm": 165},
+               "run": {**base.get("run", {}), "threshold_pace_s_per_km": 210}}
+    settings = _merge_manual_metrics(
+        fetched, {"bike": {"ftp_w": 250}, "run": {"threshold_pace_s_per_km": 215}})
+    prof = build_profile(settings, acts, well, data_as_of(acts, well))
+    assert prof.bike.ftp_w.value == 250
+    assert "manual" in prof.bike.ftp_w.source
+    assert "manual" in prof.run.threshold_pace_s_per_km.source
+    assert "intervals" in prof.bike.lthr_bpm.source

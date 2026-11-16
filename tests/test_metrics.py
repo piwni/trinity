@@ -6,7 +6,7 @@ import math
 
 import pandas as pd
 
-from aithlete.analysis import metrics
+from trinity.analysis import metrics
 
 
 def test_daily_tss_is_additive_across_sports(synth_frames):

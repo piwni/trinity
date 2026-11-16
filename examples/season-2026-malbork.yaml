@@ -13,7 +13,7 @@ meta:
   plan_id: goal-2026-malbork
   start_date: 2026-06-22
   starting_ctl: 69.0
-  title: "Aithlete — Season Plan & Analysis"
+  title: "Trinity — Season Plan & Analysis"
   # Phase-specific weekly-hour envelope (documented in the report).
   volume_ceiling_hours:
     to_first_race: 14

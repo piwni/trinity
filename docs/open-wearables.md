@@ -1,11 +1,11 @@
 # Open Wearables integration (recovery data)
 
 [Open Wearables](https://openwearables.io/) is a self-hosted unified API for
-wearable health data (Oura, Whoop, Garmin, Apple Health, and more). In Aithlete
+wearable health data (Oura, Whoop, Garmin, Apple Health, and more). In Trinity
 it is the **canonical source for recovery/sleep/HRV/RHR** — the signals that gate
 training adjustments. intervals.icu remains canonical for activities and load.
 
-It is **deferred for v1**: Aithlete runs fully offline on the synthetic athlete
+It is **deferred for v1**: Trinity runs fully offline on the synthetic athlete
 without it. Wire it in when you want real recovery data feeding readiness.
 
 ## 1. Vendor it as a submodule
@@ -33,19 +33,19 @@ docker compose up -d
 - Connect a provider (e.g. Oura/Whoop/Garmin) via the portal's OAuth flow and
   trigger a sync.
 
-## 3. Point Aithlete at it
+## 3. Point Trinity at it
 
-In Aithlete's `.env`:
+In Trinity's `.env`:
 
 ```bash
-AITHLETE_OFFLINE=false
+TRINITY_OFFLINE=false
 OPEN_WEARABLES_BASE_URL=http://localhost:8000/api/v1
 OPEN_WEARABLES_API_KEY=<your key>
 OPEN_WEARABLES_USER_ID=<the user id from the portal>
 ```
 
 Authentication uses the `X-Open-Wearables-API-Key` header. The connector
-(`src/aithlete/connectors/openwearables.py`) reads the recovery summary endpoint
+(`src/trinity/connectors/openwearables.py`) reads the recovery summary endpoint
 `/users/{user_id}/summaries/recovery` and merges it with intervals wellness,
 preferring Open Wearables for HRV/RHR/sleep (see the source-of-truth matrix in
-`src/aithlete/connectors/dedup.py`).
+`src/trinity/connectors/dedup.py`).

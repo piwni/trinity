@@ -4,9 +4,9 @@ These files let the whole pipeline run with **no accounts or API keys**.
 
 ## Synthetic athlete
 
-When `AITHLETE_OFFLINE=true` (the default), the connectors serve a deterministic
+When `TRINITY_OFFLINE=true` (the default), the connectors serve a deterministic
 synthetic athlete generated in code by
-[`src/aithlete/connectors/synthetic.py`](../../src/aithlete/connectors/synthetic.py):
+[`src/trinity/connectors/synthetic.py`](../../src/trinity/connectors/synthetic.py):
 
 - ~16 weeks of multisport history (swim/bike/run) ending on a fixed anchor date,
 - daily wellness (HRV rMSSD, resting HR, sleep, weight),
@@ -26,5 +26,5 @@ cp data/fixtures/calendar.sample.json data/calendar-athlete.json
 ## Recording real fixtures (optional)
 
 To record real API responses for offline replay, set credentials in `.env`,
-set `AITHLETE_OFFLINE=false`, and capture with `vcrpy` cassettes under
+set `TRINITY_OFFLINE=false`, and capture with `vcrpy` cassettes under
 `data/fixtures/private/` (gitignored — keep your data private).

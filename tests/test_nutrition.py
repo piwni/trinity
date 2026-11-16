@@ -8,13 +8,13 @@ import datetime as dt
 import pandas as pd
 import pytest
 
-from aithlete.analysis import nutrition as nut
-from aithlete.connectors import fitatu
-from aithlete.knowledge import load_nutrition_rules
-from aithlete.models.common import Tracked
-from aithlete.models.nutrition_digest import MicronutrientStatus
-from aithlete.models.profile import AthleteProfile, Sex
-from aithlete.models.readiness import ReadinessFlag
+from trinity.analysis import nutrition as nut
+from trinity.connectors import fitatu
+from trinity.knowledge import load_nutrition_rules
+from trinity.models.common import Tracked
+from trinity.models.nutrition_digest import MicronutrientStatus
+from trinity.models.profile import AthleteProfile, Sex
+from trinity.models.readiness import ReadinessFlag
 
 EMPTY_ACTS = pd.DataFrame(columns=["date", "sport", "tss", "duration_s", "avg_w", "intensity_class"])
 EMPTY_WELL = pd.DataFrame(columns=["date", "hrv_rmssd_ms", "resting_hr_bpm", "sleep_hours", "weight_kg"])
@@ -88,9 +88,9 @@ def test_per_item_coverage_counts_only_items_with_values(tmp_path):
 def test_legacy_partition_without_coverage_columns_survives_reimport(tmp_path, monkeypatch):
     """Partitions written before coverage tracking have no `<field>_n` columns.
     Re-import must extend them rather than raising, leaving coverage NaN."""
-    monkeypatch.setenv("AITHLETE_DATA_DIR", str(tmp_path))
-    from aithlete.analysis.loaders import load_nutrition
-    from aithlete.config import get_config
+    monkeypatch.setenv("TRINITY_DATA_DIR", str(tmp_path))
+    from trinity.analysis.loaders import load_nutrition
+    from trinity.config import get_config
     get_config.cache_clear()
     try:
         out = tmp_path / "raw" / "fitatu" / "nutrition" / "2026"
@@ -121,8 +121,8 @@ def test_alcohol_proxy_excludes_non_alcoholic():
 
 
 def test_import_writes_partition(tmp_path, monkeypatch):
-    monkeypatch.setenv("AITHLETE_DATA_DIR", str(tmp_path))
-    from aithlete.config import get_config
+    monkeypatch.setenv("TRINITY_DATA_DIR", str(tmp_path))
+    from trinity.config import get_config
     get_config.cache_clear()
     try:
         csv = tmp_path / "m.csv"
@@ -141,9 +141,9 @@ def test_import_writes_partition(tmp_path, monkeypatch):
 def test_reimport_merges_and_supersedes_without_data_loss(tmp_path, monkeypatch):
     """A second import extends the store (B1) and updates overlapping dates by
     keep-last instead of summing or dropping prior months."""
-    monkeypatch.setenv("AITHLETE_DATA_DIR", str(tmp_path))
-    from aithlete.analysis.loaders import load_nutrition
-    from aithlete.config import get_config
+    monkeypatch.setenv("TRINITY_DATA_DIR", str(tmp_path))
+    from trinity.analysis.loaders import load_nutrition
+    from trinity.config import get_config
     get_config.cache_clear()
     try:
         a = tmp_path / "a.csv"
@@ -170,9 +170,9 @@ def test_reimport_merges_and_supersedes_without_data_loss(tmp_path, monkeypatch)
 
 def test_overlapping_dates_across_files_are_not_summed(tmp_path, monkeypatch):
     """Two files in one import containing the same day -> keep-last, not summed (B2)."""
-    monkeypatch.setenv("AITHLETE_DATA_DIR", str(tmp_path))
-    from aithlete.analysis.loaders import load_nutrition
-    from aithlete.config import get_config
+    monkeypatch.setenv("TRINITY_DATA_DIR", str(tmp_path))
+    from trinity.analysis.loaders import load_nutrition
+    from trinity.config import get_config
     get_config.cache_clear()
     try:
         f1 = tmp_path / "f1.csv"

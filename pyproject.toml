@@ -1,11 +1,11 @@
 [project]
-name = "aithlete"
+name = "trinity"
 version = "0.1.0"
 description = "Open-source triathlete analysis and AI training planning. Python does the math, the agent does the judgment, JSON is the contract."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "Aithlete contributors" }]
+authors = [{ name = "Trinity contributors" }]
 keywords = ["triathlon", "training", "endurance", "intervals.icu", "cycling", "running", "swimming", "ai"]
 
 dependencies = [
@@ -26,18 +26,18 @@ dev = [
 ]
 
 [project.scripts]
-aithlete = "aithlete.cli:app"
+trinity = "trinity.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/aithlete/aithlete"
-Repository = "https://github.com/aithlete/aithlete"
+Homepage = "https://github.com/piwni/trinity"
+Repository = "https://github.com/piwni/trinity"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/aithlete"]
+packages = ["src/trinity"]
 
 [tool.ruff]
 line-length = 100

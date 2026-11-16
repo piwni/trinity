@@ -13,11 +13,11 @@ numbers; you provide judgment.** Never invent or recompute metrics yourself.
 
 1. **Refresh data and the baseline profile** (run from the repo root):
    ```bash
-   uv run aithlete fetch
-   uv run aithlete analyze        # read this summary
-   uv run aithlete readiness
-   uv run aithlete profile        # writes a baseline data/profiles/athlete.json
-   uv run aithlete context        # writes data/context/athlete.json
+   uv run trinity fetch
+   uv run trinity analyze        # read this summary
+   uv run trinity readiness
+   uv run trinity profile        # writes a baseline data/profiles/athlete.json
+   uv run trinity context        # writes data/context/athlete.json
    ```
    If the user has no real accounts configured, this runs offline on the
    synthetic athlete (that is expected and fine for a demo).
@@ -41,8 +41,8 @@ numbers; you provide judgment.** Never invent or recompute metrics yourself.
    - `results` — add any race results the user provides, with conditions metadata.
 
 4. **Write the profile back** as valid JSON conforming to the schema in
-   `src/aithlete/models/profile.py`. Keep all Python-computed fields intact;
-   only edit the interpretive fields. Re-run `uv run aithlete context` so the
+   `src/trinity/models/profile.py`. Keep all Python-computed fields intact;
+   only edit the interpretive fields. Re-run `uv run trinity context` so the
    digest reflects your updates.
 
 ## Rules

@@ -5,9 +5,9 @@ from __future__ import annotations
 import datetime as dt
 
 from _helpers import good_plan
-from aithlete.models.common import Sport
-from aithlete.models.plan import EventCategory, PlannedSession
-from aithlete.planning.workout_builder import (
+from trinity.models.common import Sport
+from trinity.models.plan import EventCategory, PlannedSession
+from trinity.planning.workout_builder import (
     WorkoutBuildError,
     build_workout_text,
     parse_workout_text,

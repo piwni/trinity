@@ -6,8 +6,8 @@ import datetime as dt
 
 import pandas as pd
 
-from aithlete.analysis import readiness as readiness_mod
-from aithlete.models.readiness import ReadinessFlag
+from trinity.analysis import readiness as readiness_mod
+from trinity.models.readiness import ReadinessFlag
 
 
 def _wellness(hrv_tail):

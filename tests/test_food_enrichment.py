@@ -12,11 +12,11 @@ import datetime as dt
 import pandas as pd
 import pytest
 
-from aithlete.analysis import nutrition as nut
-from aithlete.connectors import fitatu
-from aithlete.connectors.food_mappings import Mapping, build_reference
-from aithlete.connectors.fooddata import FoodDataClient, per_100g
-from aithlete.models.nutrition_digest import MicronutrientStatus
+from trinity.analysis import nutrition as nut
+from trinity.connectors import fitatu
+from trinity.connectors.food_mappings import Mapping, build_reference
+from trinity.connectors.fooddata import FoodDataClient, per_100g
+from trinity.models.nutrition_digest import MicronutrientStatus
 
 # Kefir is the real case this was built for: ~430 g/day logged with the calcium
 # cell blank, which read downstream as a calcium deficiency.

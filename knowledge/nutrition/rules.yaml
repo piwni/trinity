@@ -1,4 +1,4 @@
-# Aithlete nutrition rulebook — PARAMETERIZED.
+# Trinity nutrition rulebook — PARAMETERIZED.
 #
 # `analysis/nutrition.py` loads this to turn daily Fitatu totals + training load
 # into provenance-tagged adequacy flags. Like the training/readiness rulebooks,

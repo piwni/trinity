@@ -1,0 +1,52 @@
+# Dated facts the spec linter checks prose against.
+#
+# Each fact has a statement, the date it was last verified, a source, and
+# `forbidden` regex patterns: prose that contradicts the fact. A spec containing
+# any forbidden pattern fails `build_plan` (lint_stale_fact). When a fact changes,
+# update it here once -- every plan is then re-checked against it.
+schema_version: 1
+facts:
+  - id: wc_single_venue
+    statement: >
+      From 2026 the IRONMAN World Championship is a single-day race in Kailua-Kona,
+      Hawaii, with men and women racing together. The Kona/Nice alternation
+      (2023-2025) has ended. 2026: 10 Oct; 2027: 9 Oct; 2028 date not announced.
+    verified: 2026-09-24
+    source: "ironman.com press release 2025-04-30; Qualifying Events 2027 page"
+    forbidden:
+      - '\bNice\b'
+      - 'alternat\w*\s+(?:the\s+)?(?:men|women|championship|between)'
+      - '(?:championship|WC|Kona)[^.\n]{0,40}venue\s+(?:is\s+)?(?:unknown|unconfirmed|UNCONFIRMED|TBD)'
+      - '\(venue UNCONFIRMED\)'
+  - id: wc_qualification_model
+    statement: >
+      Each qualifying race has a fixed number of age-group slots. Each age group
+      with finishers gets one automatic slot for its winner (rolling to 2nd, then
+      3rd only). All remaining slots form a performance pool, split by gender in
+      proportion to starters (since 2025-11-14), ranked on age-graded time
+      (finish x the "Kona Standard" factor, e.g. M35-39 0.9895, M40-44 0.9683 in
+      the 2027 cycle; factors update each August). There is no per-age-group slot
+      bubble; the operative number is the race's age-graded pool cut-off.
+    verified: 2026-09-24
+    source: "ironman.com Age Group Qualification + Slot Allocation pages; Nov 2025 update"
+    forbidden:
+      - 'slot allocation per age group'
+      - 'M\d\d-\d\d (?:slot )?bubble'
+      - 'M40-44 is a shallower field'
+      - 'regardless of age (?:group )?or gender'
+  - id: wc_age_group_rule
+    statement: >
+      Age group is set by age on 31 December of the year you qualify. A 2027 race
+      ranks an athlete who turns 40 in 2028 as M35-39 (factor 0.9895), not M40-44.
+    verified: 2026-09-24
+    source: "ironman.com IRONMAN Knokke-Heist World Championship Qualification page"
+    forbidden:
+      - 'M40-44 at (?:Malbork|Knokke|Cervia|Calella)'
+  - id: hamburg_2026_cutoff
+    statement: >
+      IRONMAN Hamburg 2026 (7 Jun): 60 AG slots (44 men / 16 women). Last male
+      performance-pool slot at age-graded 9:03:44 (M40-44 11th, 9:21:32 finish).
+      Media-reported (tri-mag.de), not published by IRONMAN.
+    verified: 2026-09-24
+    source: "tri-mag.de 'Von Hamburg nach Hawaii'; Slowtwitch forum repost"
+    forbidden: []

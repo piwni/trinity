@@ -14,10 +14,10 @@ pushed** — fix it and re-validate.
 
 1. **Gather inputs** (run from repo root):
    ```bash
-   uv run aithlete fetch
-   uv run aithlete profile
-   uv run aithlete readiness
-   uv run aithlete context
+   uv run trinity fetch
+   uv run trinity profile
+   uv run trinity readiness
+   uv run trinity context
    ```
    Then read:
    - `data/context/athlete.json` — current fitness (CTL/ATL/TSB per sport),
@@ -36,7 +36,7 @@ pushed** — fix it and re-validate.
    right length, and an intensity distribution matching the athlete's level.
    Respect `weekly_volume_tolerance_hours` from the profile.
 
-3. **Write the plan JSON** conforming to `src/aithlete/models/plan.py`
+3. **Write the plan JSON** conforming to `src/trinity/models/plan.py`
    (`TrainingPlan` → `weeks` → `sessions` → `structure` of `WorkoutStep`s).
    - Set `starting_ctl` from the digest's combined CTL.
    - Set per-session `planned_tss`, `planned_duration_s`, `intensity_class`,
@@ -48,7 +48,7 @@ pushed** — fix it and re-validate.
 
 4. **Validate, then push** (validation gates the push):
    ```bash
-   uv run aithlete validate data/plans/<plan_id>.json
+   uv run trinity validate data/plans/<plan_id>.json
    ```
    - If it FAILS: read each error, adjust the offending weeks/sessions, re-validate.
      Common fixes: lower a week's TSS to respect the ramp cap, insert/strengthen a
@@ -56,7 +56,7 @@ pushed** — fix it and re-validate.
      to fix intensity distribution.
    - When it PASSES (warnings are acceptable, errors are not):
    ```bash
-   uv run aithlete push data/plans/<plan_id>.json --target intervals
+   uv run trinity push data/plans/<plan_id>.json --target intervals
    ```
    This stamps plan provenance (context hash, knowledge version), builds intervals
    workout text, and upserts the events (idempotent by `external_id`). Note any
