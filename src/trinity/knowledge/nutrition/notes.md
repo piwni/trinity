@@ -1,7 +1,7 @@
 # Nutrition coaching notes
 
 Companion prose to `rules.yaml`. The deterministic thresholds live in the YAML;
-this file is context for the nutritionist skill's *judgment*. Not medical advice
+this file is context for the nutrition-review skill's *judgment*. Not medical advice
 (see `DISCLAIMER.md`).
 
 ## Framing: performance fueling first

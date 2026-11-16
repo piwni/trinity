@@ -5,7 +5,7 @@
 # race TSS; STRETCH values (8:50 Malbork, 8:40 Hamburg) are labels. See
 # meta.planning_vs_stretch. Bike splits: data/context/spec_gen/projections.py.
 # Consistency is enforced by `trinity build-plan` (spec_lint: declared FTP/CdA values,
-# fuel ceiling, split totals, calendar references, knowledge/triathlon/facts.yaml).
+# fuel ceiling, split totals, calendar references, the dated facts in facts.yaml).
 #
 # Unpublished dates (assumed from the 2026 pattern): Syców 2027-07-11, Malbork
 # 2027-09-05, Mietków 2027-06-19 (if it lands on 12 Jun it collides with the

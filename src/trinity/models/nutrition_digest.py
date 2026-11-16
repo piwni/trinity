@@ -1,5 +1,5 @@
 """Nutrition digest — the bounded, provenance-tagged fueling summary the
-nutritionist skill reads.
+nutrition-review skill reads.
 
 Same contract as the training context digest: Python computes every number here
 (from Fitatu daily totals + training load + wellness); the agent never recomputes

@@ -37,7 +37,8 @@ smallest one to start from.
 
 The 2028 specs also declare the FTP and CdA values their prose is allowed to
 state. `trinity build-plan` lints the spec first and refuses to build if the
-text disagrees with those numbers or with `knowledge/triathlon/facts.yaml`.
+text disagrees with those numbers or with the dated facts in
+`src/trinity/knowledge/triathlon/facts.yaml`.
 
 ## Regenerate one yourself
 

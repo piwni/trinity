@@ -21,9 +21,8 @@ from pathlib import Path
 
 import yaml
 
-from trinity.config import get_config
 from trinity.reports.season_report import hms, sport_icon
-from trinity.storage.paths import plan_path
+from trinity.storage.paths import plan_path, reports_dir
 
 EASY_MIN_PER_KM = 4 + 55 / 60  # recent easy pace
 BRICK_MIN_PER_KM = 4 + 40 / 60
@@ -130,8 +129,7 @@ def build_horizon(spec_path: Path, *, start: dt.date | None = None, end: dt.date
     label = label or meta["plan_id"]
     done_through = (dt.date.fromisoformat(str(meta["done_through"]))
                     if meta.get("done_through") else None)
-    out_html = out_html or (get_config().data_dir / "reports"
-                            / f"{meta['plan_id']}-to-year-end.html")
+    out_html = out_html or reports_dir() / f"{meta['plan_id']}-to-year-end.html"
 
     weeks = []
     for w in plan["weeks"]:

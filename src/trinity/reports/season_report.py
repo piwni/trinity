@@ -23,10 +23,9 @@ import pandas as pd
 import yaml
 
 from trinity.analysis.loaders import load_activities, load_wellness
-from trinity.config import get_config
 from trinity.models.plan import TrainingPlan
 from trinity.planning.gate import validate_with_profile
-from trinity.storage.paths import plan_path, profile_path
+from trinity.storage.paths import plan_path, profile_path, reports_dir
 
 # ---------- formatting helpers ----------
 # 16px pictograms. Colour is set on the wrapper so the PDF stays readable in grey too.
@@ -140,7 +139,7 @@ def build_report(spec_path: Path, out_html: Path | None = None) -> Path:
     spec = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
     meta = spec["meta"]
     athlete = meta["athlete_id"]
-    out_html = out_html or get_config().data_dir / "reports" / f"{meta['plan_id']}.html"
+    out_html = out_html or reports_dir() / f"{meta['plan_id']}.html"
 
     prof = json.loads(profile_path(athlete).read_text())
     plan = json.loads(plan_path(meta["plan_id"]).read_text())

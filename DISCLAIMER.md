@@ -1,8 +1,14 @@
 # Disclaimer — Not Medical Advice
 
-Trinity is an open-source tool for analysing training data and generating
-training plans. It is **not** a medical device and does **not** provide medical
-advice, diagnosis, or treatment.
+Trinity is an open-source tool for analysing training, nutrition and health
+data and generating training plans. It is **not** a medical device and does
+**not** provide medical advice, diagnosis, or treatment.
+
+- The "doctor" and "dietician" are AI agents, not clinicians. The doctor agent
+  compares your lab results with the ranges printed on your report and a few
+  published screening thresholds. That is not a diagnosis: it cannot see what
+  was not tested, and it does not replace showing the results to a physician.
+  Do not start, stop, or change a medication or supplement because of it.
 
 - The health metrics, scores, training-load numbers, and plans produced by this
   software are **estimates** derived from consumer wearables and third-party

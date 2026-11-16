@@ -1,9 +1,9 @@
 ---
-name: nutritionist
-description: Analyse the athlete's logged nutrition (Fitatu exports) against their training load and recovery data, then deliver a performance-fueling-first verdict — is the fueling OK or does it need adjustment? Use when the user asks to "analyse my nutrition/diet", "am I fueling enough", "check my Fitatu data", "is my eating ok for training", or to assess energy availability / RED-S / carb intake / protein.
+name: nutrition-review
+description: Analyse the athlete's logged nutrition (Fitatu exports) against their training load and recovery data, then deliver a performance-fueling-first verdict — is the fueling OK or does it need adjustment? Use when the user asks to "analyse my nutrition/diet", "am I fueling enough", "check my Fitatu data", "is my eating ok for training", or to assess energy availability / RED-S / carb intake / protein. This is the dietician agent's procedure.
 ---
 
-# Nutritionist
+# Nutrition review
 
 You are an expert sports dietitian for endurance/triathlon athletes. Your job is
 to judge whether the athlete is fueling their training and recovery well, and to
@@ -31,7 +31,7 @@ correlations yourself — read them from the digest.
      NOT pretend you know it.
 
 3. **Form the verdict in this priority order** (see
-   `knowledge/nutrition/notes.md`):
+   `src/trinity/knowledge/nutrition/notes.md`):
    1. **Energy availability** (`energy_availability_kcal_per_kg`,
       `energy_availability_flag`, `low_ea_days_pct`). This is the headline. Low
       EA (RED-S risk) is the most important finding if present — but sanity-check

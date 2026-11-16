@@ -7,6 +7,7 @@
     trinity context     build the bounded context digest the agent reads (+persist)
     trinity fitatu-import  ingest Fitatu nutrition exports -> raw store
     trinity nutrition   build the bounded nutrition digest (fueling+recovery) (+persist)
+    trinity health      build the bounded health digest (labs+wellness) (+persist)
     trinity validate    run the deterministic guardrails against a plan JSON
     trinity push        validate then push a plan to intervals.icu (gated)
     trinity build-plan     lint a season spec, then build its plan JSON
@@ -24,6 +25,7 @@ from pathlib import Path
 import pandas as pd
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from trinity import knowledge
@@ -50,10 +52,16 @@ from trinity.planning.workout_builder import garmin_sync_warnings, plan_to_event
 from trinity.storage.io import load_json, save_json
 from trinity.storage.paths import (
     active_plan_path,
+    aero_path,
     calendar_path,
     context_path,
+    durability_path,
+    health_digest_path,
+    health_records_path,
+    nutrition_digest_path,
     plan_path,
     profile_path,
+    readiness_path,
 )
 
 app = typer.Typer(add_completion=False, help="Triathlete analysis + AI training planning.")
@@ -129,7 +137,7 @@ def readiness(
     for r in rep.results:
         c = {"green": "green", "amber": "yellow", "red": "red"}[r.flag.value]
         console.print(f"  [{c}]{r.flag.value:5}[/] {r.rule}: {r.message}")
-    out = get_config().context_dir / "readiness-athlete.json"
+    out = readiness_path()
     save_json(out, rep.model_dump(mode="json"))
     console.print(f"[dim]saved {out}[/]")
 
@@ -179,7 +187,7 @@ def context(athlete: str = typer.Option("athlete", help="Athlete id.")):
         console.print("[yellow]No profile yet. Run `trinity profile` first.[/]")
         raise typer.Exit(1)
     prof = AthleteProfile.model_validate(prof_data)
-    rep_data = load_json(get_config().context_dir / "readiness-athlete.json")
+    rep_data = load_json(readiness_path())
     rep = None
     if rep_data:
         from trinity.models.readiness import ReadinessReport
@@ -260,7 +268,7 @@ def durability(
             "moving_s": res.moving_s, "stopped_s": res.stopped_s,
             "fuel_failure_signature": res.looks_like_fuel_failure,
         }
-    path = cfg.data_dir / f"durability-{athlete}.json"
+    path = durability_path(athlete)
     save_json(path, {"generated_at": _dt.datetime.now(_dt.UTC).isoformat(),
                      "window": [start.isoformat(), end.isoformat()],
                      "activities": out})
@@ -341,7 +349,7 @@ def aero(
                      "cda_energy_flat": energy, "cda_energy_no_height_corr": naive,
                      "cda_effective_timed": timed})
     phys = DEFAULT_PHYSICS
-    path = get_config().data_dir / f"aero-{athlete}.json"
+    path = aero_path(athlete)
     save_json(path, {"generated_at": _dt.datetime.now(_dt.UTC).isoformat(),
                      "physics": phys.__dict__, "fits": rows})
     console.print(f"[green]Wrote aero fits[/] {path}")
@@ -532,7 +540,7 @@ def nutrition(athlete: str = typer.Option("athlete", help="Athlete id.")):
     if prof_data:
         prof = AthleteProfile.model_validate(prof_data)
     digest = nutrition_mod.build_digest(nut, acts, well, profile=prof, athlete_id=athlete)
-    out = get_config().context_dir / f"nutrition-{athlete}.json"
+    out = nutrition_digest_path(athlete)
     save_json(out, digest.model_dump(mode="json"))
 
     ea = digest.energy_availability_kcal_per_kg
@@ -566,6 +574,67 @@ def nutrition(athlete: str = typer.Option("athlete", help="Athlete id.")):
         console.print(f"  [dim]assoc[/] {c.driver} -> {c.outcome}: r={shown}{adj}{effect} (n={c.n})")
     if digest.recovery_correlations and not notable:
         console.print("  [dim]no nutrition factor moves recovery beyond day-to-day scatter[/]")
+    console.print(f"[dim]saved {out} | sha256={digest.sha256()[:16]}[/]")
+
+
+@app.command()
+def health(athlete: str = typer.Option("athlete", help="Athlete id.")):
+    """Build the bounded health digest (lab results + wellness) and persist it.
+
+    Lab panels are read from health/records.yaml in the data dir. Each latest
+    result is compared with the range on the lab report and, for a few markers,
+    a cited screening threshold. Not medical advice.
+    """
+    from trinity.analysis import health as health_mod
+    from trinity.models.nutrition_digest import NutritionDigest
+    from trinity.models.readiness import ReadinessReport
+
+    records_file = health_records_path()
+    try:
+        records = health_mod.load_records(records_file)
+    except health_mod.HealthRecordsError as exc:
+        console.print(str(exc), style="red", markup=False)
+        raise typer.Exit(2) from exc
+    acts, well = _load_frames()
+    prof_data = load_json(profile_path(athlete))
+    rep_data = load_json(readiness_path(athlete))
+    nut_data = load_json(nutrition_digest_path(athlete))
+    digest = health_mod.build_digest(
+        records, acts, well,
+        profile=AthleteProfile.model_validate(prof_data) if prof_data else None,
+        readiness=ReadinessReport.model_validate(rep_data) if rep_data else None,
+        nutrition=NutritionDigest.model_validate(nut_data) if nut_data else None,
+        athlete_id=athlete)
+    out = health_digest_path(athlete)
+    save_json(out, digest.model_dump(mode="json"))
+
+    colors = {"green": "green", "amber": "yellow", "red": "red", "unknown": "dim"}
+    if not records_file.exists():
+        console.print(f"[yellow]No lab results yet.[/] Enter them in {records_file} "
+                      "(format: data/fixtures/health.sample.yaml).")
+    else:
+        flag = digest.overall_flag.value
+        console.print(f"Labs: [bold {colors[flag]}]{flag.upper()}[/] across {len(digest.labs)} "
+                      f"marker(s) from {len(records.labs)} panel(s)")
+        table = Table("marker", "value", "date", "lab range", "flag")
+        for m in digest.labs:
+            rng = ("-" if m.lab_ref_low is None and m.lab_ref_high is None else
+                   f"{'' if m.lab_ref_low is None else f'{m.lab_ref_low:g}'}-"
+                   f"{'' if m.lab_ref_high is None else f'{m.lab_ref_high:g}'}")
+            table.add_row(escape(m.name), escape(f"{m.value:g} {m.unit}"),
+                          f"{m.date}{' (stale)' if m.stale else ''}", rng,
+                          f"[{colors[m.flag.value]}]{m.flag.value}[/]")
+        console.print(table)
+        for line in digest.attention:
+            console.print(f"  {line}", markup=False, highlight=False)
+    if digest.hrv_baseline_60d_ms.value is not None:
+        console.print(f"  HRV {digest.hrv_rmssd_ms.value} ms (60d baseline "
+                      f"{digest.hrv_baseline_60d_ms.value}) | resting HR "
+                      f"{digest.resting_hr_bpm.value} bpm (baseline "
+                      f"{digest.resting_hr_baseline_bpm.value}) | sleep "
+                      f"{digest.sleep_avg_hours.value} h")
+    for line in digest.missing:
+        console.print(f"  [dim]missing: {line}[/]", highlight=False)
     console.print(f"[dim]saved {out} | sha256={digest.sha256()[:16]}[/]")
 
 
@@ -645,7 +714,7 @@ def build_plan(spec: Path = typer.Argument(..., help="Season spec (YAML).")):
     """Lint a season spec, then build its TrainingPlan JSON into the plans dir.
 
     The lint checks the spec's prose against its own numbers and the dated facts
-    in knowledge/triathlon/facts.yaml. Any lint error stops the build.
+    in the triathlon rulebook's facts.yaml. Any lint error stops the build.
     """
     from trinity.planning.season import build_plan_from_file, week_table
 

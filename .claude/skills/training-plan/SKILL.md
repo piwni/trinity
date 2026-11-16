@@ -26,8 +26,8 @@ pushed** — fix it and re-validate.
      If it does not exist or lacks the target race, ask the user for the race
      name, date, distance bucket (sprint/olympic/half/full), and priority, and
      create/update this file.
-   - `knowledge/triathlon/notes.md` — how great amateurs and pros train.
-   - `knowledge/triathlon/rules.yaml` and `zones.yaml` — the numeric rules the
+   - `src/trinity/knowledge/triathlon/notes.md` — how great amateurs and pros train.
+   - `src/trinity/knowledge/triathlon/rules.yaml` and `zones.yaml` — the numeric rules the
      validator will enforce. **Author within these from the start** (ramp,
      recovery weeks, taper, intensity distribution, frequency, long-session caps).
 
