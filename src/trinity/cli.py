@@ -9,6 +9,10 @@
     trinity nutrition   build the bounded nutrition digest (fueling+recovery) (+persist)
     trinity validate    run the deterministic guardrails against a plan JSON
     trinity push        validate then push a plan to intervals.icu (gated)
+    trinity build-plan     lint a season spec, then build its plan JSON
+    trinity build-report   build the HTML season report for a spec
+    trinity build-horizon  build the short "this week to year end" view
+    trinity render-pdf     render a markdown note or HTML report to PDF
 """
 
 from __future__ import annotations
@@ -41,7 +45,7 @@ from trinity.connectors.fooddata import FoodDataClient
 from trinity.connectors.intervals import IntervalsClient
 from trinity.models.plan import PlanInputs, TrainingPlan
 from trinity.models.profile import AthleteProfile
-from trinity.planning.validator import validate_plan
+from trinity.planning.gate import validate_with_profile
 from trinity.planning.workout_builder import garmin_sync_warnings, plan_to_events
 from trinity.storage.io import load_json, save_json
 from trinity.storage.paths import (
@@ -569,7 +573,7 @@ def nutrition(athlete: str = typer.Option("athlete", help="Athlete id.")):
 def validate(plan_file: Path = typer.Argument(..., help="Path to a plan JSON.")):
     """Run the deterministic guardrails. Exits non-zero on errors."""
     plan = TrainingPlan.model_validate(load_json(plan_file))
-    rep = _validate_with_profile(plan)
+    rep = validate_with_profile(plan)
     _print_validation(rep)
     raise typer.Exit(0 if rep.ok else 1)
 
@@ -590,7 +594,7 @@ def push(
     # Stamp provenance inputs.
     plan.inputs = _stamp_inputs(plan)
 
-    rep = _validate_with_profile(plan)
+    rep = validate_with_profile(plan)
     _print_validation(rep)
     if not rep.ok:
         console.print("[red]Push blocked: fix validation errors first.[/]")
@@ -616,23 +620,98 @@ def push(
     console.print(f"[green]Pushed[/] {len(events)} events to intervals.icu: {result}")
 
 
+# --- season specs and reports ----------------------------------------------
+# These print with typer.echo, not rich: the output is plain tables and paths,
+# and rich would re-wrap long lines and read square brackets as markup.
+def _spec_file(spec: Path) -> Path:
+    if not spec.is_file():
+        typer.echo(f"No such spec: {spec}", err=True)
+        raise typer.Exit(2)
+    return spec
+
+
+def _date_option(value: str | None, flag: str) -> dt.date | None:
+    if value is None:
+        return None
+    try:
+        return dt.date.fromisoformat(value)
+    except ValueError as exc:
+        typer.echo(f"Invalid {flag} date '{value}': {exc}. Use YYYY-MM-DD.", err=True)
+        raise typer.Exit(2) from exc
+
+
+@app.command(name="build-plan")
+def build_plan(spec: Path = typer.Argument(..., help="Season spec (YAML).")):
+    """Lint a season spec, then build its TrainingPlan JSON into the plans dir.
+
+    The lint checks the spec's prose against its own numbers and the dated facts
+    in knowledge/triathlon/facts.yaml. Any lint error stops the build.
+    """
+    from trinity.planning.season import build_plan_from_file, week_table
+
+    plan, issues = build_plan_from_file(_spec_file(spec))
+    for i in issues:
+        typer.echo(f"  {i.severity.value:<7} {i.code}: {i.message}")
+    if plan is None:
+        errors = sum(i.severity.value == "error" for i in issues)
+        typer.echo(f"spec lint failed: {errors} error(s)", err=True)
+        raise typer.Exit(1)
+    out = plan_path(plan.plan_id)
+    save_json(out, plan.model_dump(mode="json"))
+    typer.echo(f"Wrote {out}  (from {spec})")
+    for line in week_table(plan):
+        typer.echo(line)
+
+
+@app.command(name="build-report")
+def build_report(spec: Path = typer.Argument(..., help="Season spec (YAML).")):
+    """Build the HTML season report from a spec, its plan, the profile and history."""
+    from trinity.reports.season_report import build_report as _build_report
+
+    typer.echo(f"Wrote {_build_report(_spec_file(spec))}")
+
+
+@app.command(name="build-horizon")
+def build_horizon(
+    spec: Path = typer.Argument(..., help="Season spec (YAML)."),
+    start: str = typer.Option(None, help="First day to show (YYYY-MM-DD). Default: this week's Monday."),
+    end: str = typer.Option(None, help="Last day to show (YYYY-MM-DD). Default: 31 Dec of the start year."),
+    label: str = typer.Option(None, help="Heading for the page. Default: the plan id."),
+    note: str = typer.Option("", help="A sentence appended to the method note."),
+):
+    """Build the short view of a plan: every week with a day between --start and --end."""
+    from trinity.reports.horizon import build_horizon as _build_horizon
+
+    try:
+        out, weeks, run_km = _build_horizon(
+            _spec_file(spec), start=_date_option(start, "--start"),
+            end=_date_option(end, "--end"), label=label, note=note)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Wrote {out} ({weeks} weeks, {run_km:.0f} km run)")
+
+
+@app.command(name="render-pdf")
+def render_pdf(
+    source: Path = typer.Argument(..., help="A markdown note (.md) or an HTML report (.html)."),
+    pdf: Path = typer.Argument(None, help="Defaults to the source path with a .pdf suffix."),
+):
+    """Render a markdown note or an HTML report to a print-ready PDF (needs Chrome)."""
+    from trinity.reports.pdf import ChromeNotFoundError, render
+
+    if not source.is_file():
+        typer.echo(f"No such file: {source}", err=True)
+        raise typer.Exit(2)
+    try:
+        out = render(source, pdf)
+    except ChromeNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"{out}  ({out.stat().st_size / 1024:.0f} KB)")
+
+
 # --- helpers ---------------------------------------------------------------
-def _validate_with_profile(plan: TrainingPlan):
-    prof_data = load_json(profile_path(plan.athlete_id))
-    tolerance = starting_ctl = None
-    training_age = "intermediate"
-    if prof_data:
-        prof = AthleteProfile.model_validate(prof_data)
-        tolerance = prof.weekly_volume_tolerance_hours
-        training_age = prof.training_age.value
-        if prof.load.combined.ctl.known:
-            starting_ctl = prof.load.combined.ctl.value
-    if plan.starting_ctl is not None:
-        starting_ctl = plan.starting_ctl
-    return validate_plan(plan, starting_ctl=starting_ctl,
-                         weekly_hours_tolerance=tolerance, training_age=training_age)
-
-
 def _stamp_inputs(plan: TrainingPlan) -> PlanInputs:
     digest_data = load_json(context_path(plan.athlete_id))
     sha = None

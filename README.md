@@ -97,6 +97,10 @@ cp .env.example .env   # add INTERVALS_API_KEY, set TRINITY_OFFLINE=false
 | `trinity nutrition` | Build the bounded nutrition digest (fueling and recovery). |
 | `trinity validate PLAN.json` | Run the deterministic guardrails. Exits non-zero on errors. |
 | `trinity push PLAN.json` | Validate, then upsert the plan's events to intervals.icu. `--dry-run` writes them to a file instead. |
+| `trinity build-plan SPEC.yaml` | Lint a season spec, then build its plan JSON. |
+| `trinity build-report SPEC.yaml` | Build the HTML season report from the spec, plan, profile and history. |
+| `trinity build-horizon SPEC.yaml` | Short view of a plan, by default this week to the year's end. |
+| `trinity render-pdf FILE` | Render a markdown note or an HTML report to a print-ready PDF (needs Chrome or Chromium). |
 
 Run `uv run trinity <command> --help` for options.
 
@@ -129,18 +133,24 @@ digests. The agent supplies judgment while Python supplies and checks the number
 A whole season can be described in one YAML spec and built without the agent.
 [`examples/`](examples/README.md) has real specs with their plans and reports.
 
-| Script | What it does |
-| --- | --- |
-| `scripts/build_plan.py SPEC.yaml` | Lint the spec, then generate the `TrainingPlan` JSON from it. |
-| `scripts/build_report.py SPEC.yaml` | Build the HTML season report from the spec, plan, profile and history. |
-| `scripts/build_horizon.py` | Short "this week to year end" view of one plan (paths are hardcoded). |
-| `scripts/md_to_pdf.py NOTE.md` | Render a markdown note to a print-ready A4 PDF via headless Chrome. |
-| `scripts/model_brick_options.py` | Exploratory: compare brick-structure variants against the validator. |
-| `scripts/speak_openai.py` | Render text to MP3. |
+```bash
+uv run trinity build-plan   SPEC.yaml                    # lint the spec, write the plan JSON
+uv run trinity validate     data/plans/<plan_id>.json    # run the guardrails
+uv run trinity build-report SPEC.yaml                    # HTML season report
+uv run trinity render-pdf   data/reports/<plan_id>.html  # print-ready PDF
+```
 
 The spec linter fails the build when the prose disagrees with the numbers
 (declared FTP/CdA values, fuel ceiling, split totals, calendar references) or
 with the dated facts in [`facts.yaml`](knowledge/triathlon/facts.yaml).
+
+`trinity build-horizon SPEC.yaml` writes a shorter view of the same plan: one
+block per week with hours by sport and estimated run kilometres. Its run-km
+estimate is still calibrated to one athlete's paces.
+
+Two helpers stay outside the package in `scripts/`: `model_brick_options.py`
+(exploratory: compares brick-structure variants against the validator) and
+`speak_openai.py` (renders text to MP3).
 
 ## How the math works
 
@@ -191,11 +201,12 @@ src/trinity/
                      # concepts/mappings, dedup, fetch orchestration, synthetic athlete
   analysis/          # metrics, readiness, races, durability, aero, nutrition,
                      # profile builder, context digest
-  planning/          # validator (guardrails), workout builder, prescription
-                     # parsing, season-spec lint
+  planning/          # validator (guardrails), workout builder, season-spec
+                     # engine, spec lint, prescription parsing
+  reports/           # season report, short-horizon view, PDF rendering
   models/            # pydantic schemas (schema_version + provenance)
   storage/           # atomic JSON / CSV io, path conventions
-scripts/             # season-spec engines and report rendering
+scripts/             # exploratory and one-off helpers
 knowledge/           # triathlon/ and nutrition/ rulebooks + cited notes
 examples/            # real season specs with data, plans and reports
 data/                # your data; git-ignored apart from fixtures/

@@ -1,23 +1,22 @@
-"""Render a markdown report to a print-ready PDF.
+"""Render a markdown note or an HTML report to a print-ready PDF.
 
-Built for documents that get handed to someone outside the project — a dietitian,
-a coach, a doctor — where the reader has no context and may well print the thing.
-So: A4, generous margins, tables that do not split mid-row, and no chrome from
-the tool that made it.
+Markdown is for documents that get handed to someone outside the project — a
+dietitian, a coach, a doctor — where the reader has no context and may well
+print the thing. So: A4, generous margins, tables that do not split mid-row, and
+no chrome from the tool that made it. HTML reports carry their own print styles
+and are printed as they are.
 
-    uv run python scripts/md_to_pdf.py data/reports/note.md
+    trinity render-pdf data/reports/note.md
+    trinity render-pdf data/reports/goal-2026-malbork.html
 
-Markdown goes through markdown-it-py (already present via rich); the PDF comes
-from headless Chrome, which is the only renderer on this machine that gets Polish
-diacritics and table layout right without extra system packages.
+Markdown goes through markdown-it-py; the PDF comes from headless Chrome, which
+gets Polish diacritics and table layout right without extra system packages.
 """
 
 from __future__ import annotations
 
-import argparse
 import shutil
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -84,6 +83,10 @@ code {
 """
 
 
+class ChromeNotFoundError(RuntimeError):
+    pass
+
+
 def find_chrome() -> str:
     for candidate in CHROME_CANDIDATES:
         if Path(candidate).exists():
@@ -91,43 +94,39 @@ def find_chrome() -> str:
         found = shutil.which(candidate)
         if found:
             return found
-    sys.exit("No Chrome or Chromium found — install one, or set it in CHROME_CANDIDATES.")
+    raise ChromeNotFoundError(
+        "No Chrome or Chromium found — install one, or add it to CHROME_CANDIDATES.")
 
 
-def render(md_path: Path, pdf_path: Path) -> Path:
-    md = MarkdownIt("commonmark").enable(["table", "strikethrough"])
-    body = md.render(md_path.read_text(encoding="utf-8"))
-    document = (f"<!doctype html><html lang='pl'><head><meta charset='utf-8'>"
-                f"<title>{md_path.stem}</title><style>{CSS}</style></head>"
-                f"<body>{body}</body></html>")
-
-    with tempfile.TemporaryDirectory() as tmp:
-        html_path = Path(tmp) / "doc.html"
-        html_path.write_text(document, encoding="utf-8")
-        pdf_path.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
-            [find_chrome(), "--headless", "--disable-gpu", "--no-sandbox",
-             # Chrome's own header prints the file:// URL and today's date across
-             # the top of every page, which looks like a misprint on a handout.
-             "--no-pdf-header-footer",
-             f"--print-to-pdf={pdf_path}", html_path.as_uri()],
-            check=True, capture_output=True, timeout=120,
-        )
+def html_to_pdf(html_path: Path, pdf_path: Path) -> Path:
+    """Print an HTML file to PDF with headless Chrome."""
+    pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [find_chrome(), "--headless", "--disable-gpu", "--no-sandbox",
+         # Chrome's own header prints the file:// URL and today's date across
+         # the top of every page, which looks like a misprint on a handout.
+         "--no-pdf-header-footer",
+         f"--print-to-pdf={pdf_path.resolve()}", html_path.resolve().as_uri()],
+        check=True, capture_output=True, timeout=120,
+    )
     return pdf_path
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("markdown", type=Path)
-    ap.add_argument("pdf", type=Path, nargs="?",
-                    help="Defaults to the input path with a .pdf suffix.")
-    args = ap.parse_args()
-
-    if not args.markdown.is_file():
-        sys.exit(f"No such file: {args.markdown}")
-    out = render(args.markdown, args.pdf or args.markdown.with_suffix(".pdf"))
-    print(f"{out}  ({out.stat().st_size / 1024:.0f} KB)")
+def markdown_to_html(md_path: Path) -> str:
+    md = MarkdownIt("commonmark").enable(["table", "strikethrough"])
+    body = md.render(md_path.read_text(encoding="utf-8"))
+    return (f"<!doctype html><html lang='pl'><head><meta charset='utf-8'>"
+            f"<title>{md_path.stem}</title><style>{CSS}</style></head>"
+            f"<body>{body}</body></html>")
 
 
-if __name__ == "__main__":
-    main()
+def render(source: Path, pdf_path: Path | None = None) -> Path:
+    """Render a ``.md`` note or an ``.html`` report to PDF, next to the source
+    unless ``pdf_path`` says otherwise."""
+    pdf_path = pdf_path or source.with_suffix(".pdf")
+    if source.suffix.lower() in {".html", ".htm"}:
+        return html_to_pdf(source, pdf_path)
+    with tempfile.TemporaryDirectory() as tmp:
+        html_path = Path(tmp) / "doc.html"
+        html_path.write_text(markdown_to_html(source), encoding="utf-8")
+        return html_to_pdf(html_path, pdf_path)

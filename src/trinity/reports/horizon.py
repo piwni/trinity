@@ -1,11 +1,14 @@
-"""Short plan PDF: the current week through the end of the year.
+"""Short plan view: a window of weeks, by default this week to the year's end.
 
 One page-ish block per week: the session table, then hours by sport and
 estimated run kilometres. Run km is not stored on the plan (sessions are
-written in minutes), so easy running is counted at 4:55/km, long runs stop
-at the written cap, and the 8 Nov race is 10 km.
+written in minutes), so it is estimated from the pace constants below.
 
-    uv run python scripts/build_horizon.py
+    trinity build-horizon SPEC.yaml --start 2026-10-05
+
+The run-km model is still calibrated to one athlete's autumn 2026 block: the
+paces, the measured override and the 10 km race distance are theirs. Treat the
+kilometres as that athlete's estimate until these move into the season spec.
 """
 
 from __future__ import annotations
@@ -14,29 +17,21 @@ import datetime as dt
 import html
 import json
 import re
-import sys
 from pathlib import Path
 
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import build_report as br  # noqa: E402
-
-ROOT = Path(__file__).resolve().parents[1]
-PLAN = ROOT / "data" / "plans" / "goal-2028-b.json"
-SPEC = ROOT / "examples" / "season-2028-b.yaml"
-OUT_HTML = ROOT / "data" / "reports" / "goal-2028-b-to-year-end.html"
-
-# Current week starts Monday 5 Oct 2026. Include every week that still has
-# a day in 2026, so the week of 28 Dec (which ends 3 Jan) is in.
-START = dt.date(2026, 10, 5)
-YEAR_END = dt.date(2026, 12, 31)
-DONE_BEFORE = dt.date(2026, 11, 16)  # through Sunday 15 Nov, the day before this week
+from trinity.config import get_config
+from trinity.reports.season_report import hms, sport_icon
+from trinity.storage.paths import plan_path
 
 EASY_MIN_PER_KM = 4 + 55 / 60  # recent easy pace
 BRICK_MIN_PER_KM = 4 + 40 / 60
 JOG_MIN_PER_KM = 5 + 20 / 60
 VO2_MIN_PER_KM = 3 + 25 / 60
+RACE_KM = 10.0
+# Runs whose distance was measured, and came out longer than the planned minutes imply.
+MEASURED_RUN_KM = {"2026-10-07": 15.1}
 DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
@@ -50,13 +45,12 @@ def hours(seconds: float) -> float:
 
 def run_km(session: dict) -> float:
     mins = session["planned_duration_s"] / 60
-    # Wednesday's 4x8 was measured at 15.1 km, longer than the 55 min on the plan.
-    if session.get("date") == "2026-10-07" and session.get("sport") == "run":
-        return 15.1
+    if session.get("sport") == "run" and session.get("date") in MEASURED_RUN_KM:
+        return MEASURED_RUN_KM[session["date"]]
     name = (session.get("name") or "").lower()
     desc = session.get("description") or ""
     if session.get("category") == "RACE" or name.startswith("race"):
-        return 10.0
+        return RACE_KM
     cap = None
     m = re.search(r"Cap (\d+) km", desc)
     if m:
@@ -108,30 +102,69 @@ def fmt_h(seconds: float) -> str:
     return f"{seconds / 3600:.1f} h"
 
 
-def main() -> None:
-    plan = json.loads(PLAN.read_text())
-    spec = yaml.safe_load(SPEC.read_text())
+def _pace(min_per_km: float) -> str:
+    return f"{int(min_per_km)}:{round(min_per_km % 1 * 60):02d}"
+
+
+def build_horizon(spec_path: Path, *, start: dt.date | None = None, end: dt.date | None = None,
+                  label: str | None = None, note: str = "",
+                  out_html: Path | None = None) -> tuple[Path, int, float]:
+    """Write the short-horizon view of a spec's plan.
+
+    Every plan week with a day inside ``start..end`` is included, so a week that
+    straddles the end date is shown whole. ``start`` defaults to this week's
+    Monday and ``end`` to 31 December of the start year. Sessions up to the
+    spec's ``meta.done_through`` are marked done. ``label`` heads the page
+    (default: the plan id) and ``note`` is appended to the method note.
+
+    Returns ``(path, weeks, run_km)``.
+    """
+    spec = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+    meta = spec["meta"]
+    plan = json.loads(plan_path(meta["plan_id"]).read_text(encoding="utf-8"))
     focus = {int(w["index"]): w.get("focus", "") for w in spec["weeks"]}
+    if start is None:
+        today = dt.date.today()
+        start = today - dt.timedelta(days=today.weekday())
+    end = end or dt.date(start.year, 12, 31)
+    label = label or meta["plan_id"]
+    done_through = (dt.date.fromisoformat(str(meta["done_through"]))
+                    if meta.get("done_through") else None)
+    out_html = out_html or (get_config().data_dir / "reports"
+                            / f"{meta['plan_id']}-to-year-end.html")
 
     weeks = []
     for w in plan["weeks"]:
-        start = dt.date.fromisoformat(w["start_date"])
-        end = start + dt.timedelta(days=6)
-        if end < START or start > YEAR_END:
+        wk_start = dt.date.fromisoformat(w["start_date"])
+        wk_end = wk_start + dt.timedelta(days=6)
+        if wk_end < start or wk_start > end:
             continue
         weeks.append(w)
+    if not weeks:
+        raise ValueError(f"plan {meta['plan_id']} has no weeks between {start} and {end}")
+
+    first = dt.date.fromisoformat(weeks[0]["start_date"])
+    last_start = dt.date.fromisoformat(weeks[-1]["start_date"])
+    last_end = last_start + dt.timedelta(days=6)
+    year_end = (end.month, end.day) == (12, 31)
+    until = f"end of {end.year}" if year_end else end.strftime("%-d %b %Y")
+    sub = (f"{first.strftime('%-d %B')} – {last_end.strftime('%-d %B')}. The last block is the "
+           f"week of {last_start.strftime('%-d %B')}, which finishes on "
+           f"{last_end.strftime('%-d %B')}.")
+    if done_through:
+        sub += f" Sessions through {done_through.strftime('%A %-d %B')} are marked done."
 
     parts: list[str] = []
     A = parts.append
     A("<!doctype html><html><head><meta charset='utf-8'>")
-    A(f"<title>Plan B · {START.strftime('%-d %b')} – end of 2026</title>")
+    A(f"<title>{esc(label)} · {start.strftime('%-d %b')} – {until}</title>")
     A(f"<style>{CSS}</style></head><body>")
-    A("<h1>Plan B · through the end of 2026</h1>")
-    A("<p class='sub'>5 October – 3 January. The last block is the week of 28 December, "
-      "which finishes on 3 January. Sessions through Sunday 15 November are marked done.</p>")
-    A("<p class='note'>Run kilometres are estimated. Easy running is counted at 4:55/km, "
-      "which is the recent easy pace. A long run stops at its written cap. Hours are a ceiling. "
-      "The 8 November 10 km is off (Web Summit), so the 10 km test moves to spring 2027.</p>")
+    A(f"<h1>{esc(label)} · through {'the ' if year_end else ''}{until}</h1>")
+    A(f"<p class='sub'>{sub}</p>")
+    A("<p class='note'>Run kilometres are estimated. Easy running is counted at "
+      f"{_pace(EASY_MIN_PER_KM)}/km, "
+      "which is the recent easy pace. A long run stops at its written cap. Hours are a ceiling."
+      f"{' ' + esc(note) if note else ''}</p>")
 
     grand = summarize([s for w in weeks for s in w["sessions"]])
     A("<div class='kpis'>")
@@ -162,12 +195,12 @@ def main() -> None:
     A("</table>")
 
     for w in weeks:
-        start = dt.date.fromisoformat(w["start_date"])
-        end = start + dt.timedelta(days=6)
+        wk_start = dt.date.fromisoformat(w["start_date"])
+        wk_end = wk_start + dt.timedelta(days=6)
         sm = summarize(w["sessions"])
         rec = " · recovery" if w.get("is_recovery") else ""
         A("<section class='week'>")
-        A(f"<h2>Week {w['week_index']} · {start.strftime('%-d %b')} – {end.strftime('%-d %b')}"
+        A(f"<h2>Week {w['week_index']} · {wk_start.strftime('%-d %b')} – {wk_end.strftime('%-d %b')}"
           f"<span class='phase'>{esc(w['phase'])}{rec}</span></h2>")
         foc = focus.get(w["week_index"], "")
         if foc:
@@ -178,7 +211,7 @@ def main() -> None:
         for s in w["sessions"]:
             by_date.setdefault(s["date"], []).append(s)
         for i in range(7):
-            day = start + dt.timedelta(days=i)
+            day = wk_start + dt.timedelta(days=i)
             rows = by_date.get(day.isoformat(), [])
             if not rows:
                 dn = f"{DOW[day.weekday()]} {day.strftime('%-d.%m')}"
@@ -190,10 +223,11 @@ def main() -> None:
                 tag = ("<span class='tag t-race'>race</span>" if s.get("category") == "RACE"
                        else f"<span class='tag t-{esc(s['intensity_class'])}'>{esc(s['intensity_class'])}</span>")
                 brk = " <span class='tag t-moderate'>brick</span>" if s.get("is_brick") else ""
-                done = " <span class='tag t-done'>done</span>" if day < DONE_BEFORE else ""
+                done = (" <span class='tag t-done'>done</span>"
+                        if done_through and day <= done_through else "")
                 A(f"<tr><td class='day mono'>{esc(dn)}</td>"
-                  f"<td>{br.sport_icon(s)}{esc(s['name'])}{brk}{done}</td>"
-                  f"<td>{tag}</td><td class='r mono'>{br.hms(s['planned_duration_s'])}</td>"
+                  f"<td>{sport_icon(s)}{esc(s['name'])}{brk}{done}</td>"
+                  f"<td>{tag}</td><td class='r mono'>{hms(s['planned_duration_s'])}</td>"
                   f"<td class='small'>{esc(s.get('description') or '')}</td></tr>")
         A("</table>")
         bits = [
@@ -209,9 +243,9 @@ def main() -> None:
         A("</section>")
 
     A("</body></html>")
-    OUT_HTML.parent.mkdir(parents=True, exist_ok=True)
-    OUT_HTML.write_text("\n".join(parts), encoding="utf-8")
-    print(f"Wrote {OUT_HTML} ({len(weeks)} weeks, {grand['run_km']:.0f} km run)")
+    out_html.parent.mkdir(parents=True, exist_ok=True)
+    out_html.write_text("\n".join(parts), encoding="utf-8")
+    return out_html, len(weeks), grand["run_km"]
 
 
 CSS = """
@@ -251,7 +285,3 @@ td.r, th.r { text-align: right; }
 .week table, .sum { break-inside: avoid; }
 @page { size: A4; margin: 12mm 12mm 14mm; }
 """
-
-
-if __name__ == "__main__":
-    main()

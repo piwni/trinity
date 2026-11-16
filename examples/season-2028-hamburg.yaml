@@ -4,7 +4,7 @@
 # Two columns everywhere: PLANNING values drive every watt, pace, IF check and
 # race TSS; STRETCH values (8:50 Malbork, 8:40 Hamburg) are labels. See
 # meta.planning_vs_stretch. Bike splits: data/context/spec_gen/projections.py.
-# Consistency is enforced by `build_plan` (spec_lint: declared FTP/CdA values,
+# Consistency is enforced by `trinity build-plan` (spec_lint: declared FTP/CdA values,
 # fuel ceiling, split totals, calendar references, knowledge/triathlon/facts.yaml).
 #
 # Unpublished dates (assumed from the 2026 pattern): Syców 2027-07-11, Malbork

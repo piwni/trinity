@@ -10,15 +10,12 @@ Run: uv run python scripts/model_brick_options.py
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import build_plan as bp  # noqa: E402
-
-from trinity.planning.validator import _daily_plan_tss, validate_plan  # noqa: E402
+from trinity.planning import season as bp
+from trinity.planning.validator import _daily_plan_tss, validate_plan
 
 SPEC = Path(__file__).resolve().parents[1] / "examples" / "season-2026-malbork.yaml"
 
