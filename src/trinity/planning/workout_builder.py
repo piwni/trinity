@@ -9,6 +9,12 @@ Garmin-sync caveats (documented, enforced where possible):
 - Structured SWIM workouts sync poorly to Garmin (distance/stroke steps, OWS).
   We emit them but warn.
 - RUN targets must pick pace OR HR; mixing confuses some Garmin devices.
+- ``m`` means minutes, so distances under 1 km are written ``400mtr``.
+- Absolute pace is written slower-first and needs the trailing word ``Pace``,
+  or intervals silently drops the target.
+- Pace windows are never narrower than the minimums below. A watch alerts on
+  every second outside the window, and GPS pace wanders a few seconds per km,
+  so a 2 s window beeps "too fast / too slow" for the whole rep.
 - intervals -> Garmin push requires a Garmin-linked intervals account with push
   enabled; we only push to intervals.
 """
@@ -16,6 +22,7 @@ Garmin-sync caveats (documented, enforced where possible):
 from __future__ import annotations
 
 import datetime as dt
+import math
 
 from trinity.models.common import Sport
 from trinity.models.plan import (
@@ -36,15 +43,40 @@ _DEFAULT_TIME = {Sport.SWIM: dt.time(7, 0), Sport.BIKE: dt.time(9, 0),
                  Sport.RUN: dt.time(18, 0), Sport.OTHER: dt.time(12, 0)}
 
 
+MIN_PACE_WINDOW_S = {Sport.RUN: 10, Sport.SWIM: 4}  # s/km for run, s/100m for swim
+MIN_PACE_WINDOW_PCT = 5  # percentage points of threshold pace
+
+
 class WorkoutBuildError(ValueError):
     pass
+
+
+def _widen(slow: int, fast: int, minimum: int) -> tuple[int, int]:
+    """Grow ``slow``-``fast`` to ``minimum`` around its centre; the slow side
+    takes the odd unit."""
+    extra = minimum - (slow - fast)
+    if extra <= 0:
+        return slow, fast
+    return slow + math.ceil(extra / 2), fast - extra // 2
+
+
+def _mmss(seconds: int) -> str:
+    return f"{seconds // 60}:{seconds % 60:02d}"
+
+
+def _fmt_abs_pace(t, sport: Sport) -> str:
+    values = [v for v in (t.low_abs, t.high_abs) if v is not None]
+    slow, fast = round(max(values)), round(min(values))
+    unit = "/100m" if sport is Sport.SWIM else "/km"
+    slow, fast = _widen(slow, fast, MIN_PACE_WINDOW_S.get(sport, MIN_PACE_WINDOW_S[Sport.RUN]))
+    return f"{_mmss(slow)}-{_mmss(fast)}{unit} Pace"
 
 
 def _fmt_duration(step: WorkoutStep) -> str:
     if step.distance_m is not None:
         if step.distance_m >= 1000:
             return f"{step.distance_m / 1000:g}km"
-        return f"{int(step.distance_m)}m"
+        return f"{int(step.distance_m)}mtr"
     if step.duration_s is not None:
         if step.duration_s % 60 == 0:
             return f"{step.duration_s // 60}m"
@@ -52,7 +84,7 @@ def _fmt_duration(step: WorkoutStep) -> str:
     raise WorkoutBuildError("step needs duration_s or distance_m")
 
 
-def _fmt_target(step: WorkoutStep) -> str:
+def _fmt_target(step: WorkoutStep, sport: Sport) -> str:
     t = step.target
     if t.type in (TargetType.POWER, TargetType.HR):
         if t.low_pct is not None and t.high_pct is not None:
@@ -60,18 +92,21 @@ def _fmt_target(step: WorkoutStep) -> str:
         if t.low_pct is not None:
             return f"{round(t.low_pct * 100)}%"
     if t.type is TargetType.PACE:
-        if t.low_pct is not None and t.high_pct is not None:
-            return f"{round(t.low_pct * 100)}-{round(t.high_pct * 100)}% pace"
+        if t.low_abs is not None or t.high_abs is not None:
+            return _fmt_abs_pace(t, sport)
         if t.low_pct is not None:
-            return f"{round(t.low_pct * 100)}% pace"
+            hi = t.high_pct if t.high_pct is not None else t.low_pct
+            top, bottom = _widen(round(max(t.low_pct, hi) * 100), round(min(t.low_pct, hi) * 100),
+                                 MIN_PACE_WINDOW_PCT)
+            return f"{bottom}-{top}% pace"
     if t.type is TargetType.RPE and t.low_pct is not None:
         return f"RPE{round(t.low_pct * 10)}"
     return ""
 
 
-def _step_line(step: WorkoutStep) -> str:
+def _step_line(step: WorkoutStep, sport: Sport) -> str:
     dur = _fmt_duration(step)
-    tgt = _fmt_target(step)
+    tgt = _fmt_target(step, sport)
     label = f" {step.label}" if step.label else ""
     parts = [f"- {dur}"]
     if tgt:
@@ -90,10 +125,10 @@ def build_workout_text(session: PlannedSession) -> str:
     groups: list[str] = []
     for step in session.structure:
         if step.is_repeat:
-            block = [f"{step.reps}x"] + [_step_line(sub) for sub in step.substeps]
+            block = [f"{step.reps}x"] + [_step_line(sub, session.sport) for sub in step.substeps]
             groups.append("\n".join(block))
         else:
-            groups.append(_step_line(step))
+            groups.append(_step_line(step, session.sport))
     return "\n\n".join(groups)
 
 

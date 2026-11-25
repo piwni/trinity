@@ -44,6 +44,11 @@ Two things hold whatever the athlete asks for. A plan with validation errors is
 never pushed. And the readiness flag is a gate, not a suggestion: a red flag
 overrides the session that was planned.
 
+When a workout goes to the watch, its pace windows are never narrower than
+10 s/km on a run or 4 s/100 m in the pool (`MIN_PACE_WINDOW_S` in
+`planning/workout_builder.py`). A 2 s window beeps "too fast / too slow" for
+the whole rep. This holds for workout text written by hand as well.
+
 ## Your team
 
 Delegate to a specialist with the Agent tool. Each one starts without your
