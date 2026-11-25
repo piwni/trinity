@@ -2,7 +2,7 @@
   "schema_version": 1,
   "athlete_id": "athlete",
   "plan_id": "goal-2028-b",
-  "generated_at": "2026-11-16T09:10:13.311747Z",
+  "generated_at": "2026-11-23T08:20:50.641310Z",
   "start_date": "2026-09-07",
   "goal_race": {
     "name": "IRONMAN Hamburg",
@@ -1656,21 +1656,6 @@
       "sessions": [
         {
           "date": "2026-11-17",
-          "sport": "swim",
-          "name": "Swim aerobic",
-          "category": "WORKOUT",
-          "intensity_class": "easy",
-          "planned_tss": 29.3,
-          "planned_duration_s": 3300,
-          "is_brick": false,
-          "target_type": "open",
-          "structure": [],
-          "description": "Steady 3 km.",
-          "flags": [],
-          "external_id": "aithlete-2026-11-17-swim-Swim_aerobic"
-        },
-        {
-          "date": "2026-11-17",
           "sport": "bike",
           "name": "Bike sweet spot",
           "category": "WORKOUT",
@@ -1680,9 +1665,24 @@
           "is_brick": false,
           "target_type": "open",
           "structure": [],
-          "description": "2x20' @ 212-225 W off 5' easy.",
+          "description": "2x20' @ 212-225 W off 5' easy. Done Tue 17 Nov on crank ERG, 212 W then 220 W. The 4iiii file averaged 202 W then 214 W.",
           "flags": [],
           "external_id": "aithlete-2026-11-17-bike-Bike_sweet_s"
+        },
+        {
+          "date": "2026-11-17",
+          "sport": "other",
+          "name": "Strength (heavy)",
+          "category": "WORKOUT",
+          "intensity_class": "easy",
+          "planned_tss": 14.7,
+          "planned_duration_s": 2400,
+          "is_brick": false,
+          "target_type": "open",
+          "structure": [],
+          "description": "Heavy, low volume. Swapped with Wednesday's swim.",
+          "flags": [],
+          "external_id": "aithlete-2026-11-17-other-Strength_(he"
         },
         {
           "date": "2026-11-18",
@@ -1701,18 +1701,18 @@
         },
         {
           "date": "2026-11-18",
-          "sport": "other",
-          "name": "Strength (heavy)",
+          "sport": "swim",
+          "name": "Swim aerobic",
           "category": "WORKOUT",
           "intensity_class": "easy",
-          "planned_tss": 14.7,
-          "planned_duration_s": 2400,
+          "planned_tss": 29.3,
+          "planned_duration_s": 3300,
           "is_brick": false,
           "target_type": "open",
           "structure": [],
-          "description": "Heavy, low volume.",
+          "description": "Steady 3 km. Swapped with Tuesday's strength.",
           "flags": [],
-          "external_id": "aithlete-2026-11-18-other-Strength_(he"
+          "external_id": "aithlete-2026-11-18-swim-Swim_aerobic"
         },
         {
           "date": "2026-11-19",

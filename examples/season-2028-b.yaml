@@ -15,7 +15,7 @@
 meta:
   athlete_id: athlete
   plan_id: goal-2028-b
-  done_through: "2026-11-15"
+  done_through: "2026-11-22"
   start_date: 2026-09-07
   starting_ctl: 69.4
   ftp_w: 250                    # PLANNING FTP. Tested 29 Sep 2026: 249 W indoors (stretch 255 unsupported)
@@ -616,10 +616,10 @@ weeks:
     focus: "2028-b: 13.3 h, run cap 60 km. Gut training to 70 g/h"
     type: explicit
     sessions:
-      - { day: 1, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 55, desc: "Steady 3 km." }
-      - { day: 1, sport: bike, name: "Bike sweet spot", intensity: moderate, minutes: 70, desc: "2x20' @ 212-225 W off 5' easy." }
+      - { day: 1, sport: bike, name: "Bike sweet spot", intensity: moderate, minutes: 70, desc: "2x20' @ 212-225 W off 5' easy. Done Tue 17 Nov on crank ERG, 212 W then 220 W. The 4iiii file averaged 202 W then 214 W." }
+      - { day: 1, sport: other, name: "Strength (heavy)", intensity: easy, minutes: 40, desc: "Heavy, low volume. Swapped with Wednesday's swim." }
       - { day: 2, sport: run, name: "Run key set", intensity: moderate, minutes: 55, desc: "3x10' @ 3:33-3:37/km off 3' jog. First rep is the slowest. Pace and feel lead, heart rate is information." }
-      - { day: 2, sport: other, name: "Strength (heavy)", intensity: easy, minutes: 40, desc: "Heavy, low volume." }
+      - { day: 2, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 55, desc: "Steady 3 km. Swapped with Tuesday's strength." }
       - { day: 3, sport: swim, name: "Swim aerobic", intensity: easy, minutes: 50, desc: "Steady." }
       - { day: 3, sport: run, name: "Run easy + strides", intensity: easy, minutes: 70, desc: "Z2, heart rate at or under 145. Plus 6x20s uphill strides, walk down. Tissue work in place of the hill session." }
       - { day: 4, sport: bike, name: "Bike Z2", intensity: easy, minutes: 80, desc: "Aerobic. Fuel 70 g/h." }
